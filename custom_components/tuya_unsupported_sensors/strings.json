@@ -1,0 +1,48 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Select Region",
+        "description": "Choose your Tuya Cloud region"
+      },
+      "credentials": {
+        "title": "Enter Credentials",
+        "description": "Enter your Tuya Cloud API credentials. Follow the Xtend Tuya cloud credential guide up to step 5: https://github.com/azerty9971/xtend_tuya/blob/v4.2.4/docs/cloud_credentials.md"
+      },
+      "discover_devices": {
+        "title": "Discovering Devices",
+        "description": "Please wait while we discover your devices..."
+      },
+      "select_devices": {
+        "title": "Select Devices",
+        "description": "Select which devices to integrate. {info}",
+        "data": {
+          "devices": "Devices"
+        }
+      },
+      "update_interval": {
+        "title": "Update Interval",
+        "description": "How often should sensor data be updated?"
+      }
+    },
+    "error": {
+      "invalid_auth": "Invalid credentials. Please check your Client ID and Client Secret. Note: If your Tuya developer trial expired, you'll need to apply for an extension and wait for it to be renewed.",
+      "cannot_connect": "Unable to connect to Tuya API. Please check your region selection and network connection.",
+      "unknown": "An unexpected error occurred. Please check the logs for details."
+    },
+    "abort": {
+      "already_configured": "This integration is already configured.",
+      "discovery_failed": "Failed to discover devices. Error: {error}. Please check your credentials, region selection, and ensure your Tuya developer trial is active.",
+      "no_devices": "No devices found. Please ensure your Tuya account has devices associated with these API credentials."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Update Interval",
+        "description": "How often should sensor data be updated?"
+      }
+    }
+  }
+}
+
