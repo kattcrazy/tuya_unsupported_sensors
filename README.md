@@ -30,13 +30,13 @@ An intergration that creates devices & entites for sensors otherwise unsupported
 4. Select your usually unsupported sensors from the list.
 
 ## Tuya Dev API
-- Follow [this guide](https://github.com/azerty9971/xtend_tuya/blob/v4.2.4/docs/cloud_credentials.md) until step 5 to see how to set up the API credentials (credit @azerty9971)
+Follow [this guide](https://github.com/azerty9971/xtend_tuya/blob/v4.2.4/docs/cloud_credentials.md) until step 5 to see how to set up the API credentials (credit @azerty9971)
 
 ## Troubleshooting
-- Trouble finding devices/incorrect API key: Has your API expired?
-- Trouble finding devices/incorrect API key: Have you connected it to your app?
-- Trouble finding devices: Do you have devices to add?
-- No entities in a device: Check the list of supported sensors
+Trouble finding devices/incorrect API key: Has your API expired?  
+Trouble finding devices/incorrect API key: Have you connected it to your app?  
+Trouble finding devices: Do you have devices to add?  
+No entities in a device: Check the list of supported sensors
 
 ## About
 This is my first ever github repo and my first time making a homeassistant intergration. I have tested it on my own setup and it works perfectly! Please report an issue if something doesn't work :)
