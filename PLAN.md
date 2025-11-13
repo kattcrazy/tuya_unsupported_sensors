@@ -31,5 +31,5 @@
 - Tag a GitHub release (e.g., `v1.0.0`) once testing passes.  
 - When ready for HACS, ensure README, `hacs.json`, icon submission, and releases match the [publish requirements](https://www.hacs.xyz/docs/publish/start/).
 -
--**Last Updated:** 9:24am 13/11/2025
+-**Last Updated:** 9:33am 13/11/2025
 ==

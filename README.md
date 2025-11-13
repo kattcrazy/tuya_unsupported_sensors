@@ -1,35 +1,32 @@
-# Tuya Unsupported Sensors
+# Overview
+An intergration that creates devices & entites for sensors otherwise unsupported by the main tuya intergration.
 
-Home Assistant integration for connecting Tuya sensors/devices that aren't supported by the official Tuya integration.
+## Sensors/entities supported
+- Temperature
+- Humidity
+- Battery
+- Door/contact
 
-## Installation (Docker)
+## Will not support
+- Anything not listed above
+- Anything that requires control will not be added, this is for read-only sensors
 
-1. Copy the `custom_components/tuya_unsupported_sensors` folder into your Home Assistant `custom_components` directory:
-   ```bash
-   docker cp tuya_unsupported_sensors <container_name>:/config/custom_components/
-   ```
+## Installation
+- Download the folder named tuya_unsupported_sensors inside custom_components and drag/upload it into your custom_components folder inside your homeassistant configuration folder- for homeassistant docker custom_components is inside the folder that holds your configuration.yaml.
+- Then go to settings > devices & intergrations > add intergration and search for Tuya Unsupported Sensors
+- Fill in the required details (see Tuya dev api below) and choose a refresh interval.
+- Then select your usually unsupported sensors from the list.
 
-2. Restart Home Assistant
-
-3. Go to **Settings → Devices & Services → Add Integration** and search for "Tuya Unsupported Sensors"
-
-## Configuration
-
-1. Select your Tuya region (US, EU, CN, etc.)
-2. Enter your Tuya API credentials (Client ID and Client Secret)
-3. Select which devices to integrate from the discovered list
-4. Set update interval (1-30 minutes, default: 5 minutes)
-
-## Requirements
-
-- Tuya Cloud API credentials (Client ID and Client Secret)
-- **Active Tuya developer trial or subscription** (expired trials will cause discovery failures)
-- Home Assistant 2024.1.0 or later
+## Tuya Dev API
+- View xxx link until step 5 to see how to set up the api credentials
 
 ## Troubleshooting
+- Has your API expired?
+- Have you connected it to your app?
+- Do you have devices to add?
+- No entities- check the list of supported sensors
 
-**Discovery Failed Error:**
-- Verify your Tuya developer trial/subscription is active
-- Check that your Client ID and Client Secret are correct
-- Ensure you've selected the correct region (Western America = US, Eastern America = US East, etc.)
-- Check Home Assistant logs for detailed error messages
+## About
+- This is my first ever github repo and my first time making a homeassistant intergration.
+- I used Cursor AI to assist me with coding but the idea and implementation/plan/layout is mine.
+- I have tested it on my own setup and it works perfectly! Please report an issue if something doesn't work :)
