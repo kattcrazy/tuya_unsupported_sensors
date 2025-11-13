@@ -1,6 +1,7 @@
 {
   "domain": "tuya_unsupported_sensors",
   "name": "Tuya Unsupported Sensors",
+  "codeowners": ["@kattcrazy"]
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/kattcrazy/tuya_unsupported_sensors",
@@ -9,5 +10,5 @@
   "issue_tracker": "https://github.com/kattcrazy/tuya_unsupported_sensors/issues",
   "requirements": [],
   "version": "1.0.0",
-  "codeowners": ["@kattcrazy"]
+
 }
