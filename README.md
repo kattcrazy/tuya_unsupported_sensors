@@ -41,4 +41,4 @@ An intergration that creates devices & entites for sensors otherwise unsupported
 
 ## About
 This is my first ever github repo and my first time making a homeassistant intergration. I have tested it on my own setup and it works perfectly! Please report an issue if something doesn't work :)
-Support me [here](https://summersketches.com/product/support-me/): 
+Support me [here](https://summersketches.com/product/support-me/)
