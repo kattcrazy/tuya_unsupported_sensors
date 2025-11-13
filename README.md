@@ -26,5 +26,4 @@ An intergration that creates devices & entites for sensors otherwise unsupported
 - No entities in a device - Check the list of supported sensors
 
 ## About
-This is my first ever github repo and my first time making a homeassistant intergration.
-I used Cursor AI to assist me with coding but the idea and implementation/plan/layout is mine.I have tested it on my own setup and it works perfectly! Please report an issue if something doesn't work :)
+This is my first ever github repo and my first time making a homeassistant intergration. I have tested it on my own setup and it works perfectly! Please report an issue if something doesn't work :)
