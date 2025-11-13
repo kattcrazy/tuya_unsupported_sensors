@@ -2,13 +2,12 @@
   "domain": "tuya_unsupported_sensors",
   "name": "Tuya Unsupported Sensors",
   "version": "1.0.0",
-  "codeowners": ["@Kattcrazy"],
-  "documentation": "https://github.com/Kattcrazy/tuya_unsupported_sensors",
-  "issue_tracker": "https://github.com/Kattcrazy/tuya_unsupported_sensors/issues",
+  "codeowners": ["@kattcrazy"],
+  "documentation": "https://github.com/kattcrazy/tuya_unsupported_sensors",
+  "issue_tracker": "https://github.com/kattcrazy/tuya_unsupported_sensors/issues",
   "config_flow": true,
   "requirements": [],
   "dependencies": [],
   "iot_class": "cloud_polling",
-  "integration_type": "hub",
-  "brand": "tuya_unsupported_sensors"
+  "integration_type": "hub"
 }
