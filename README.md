@@ -19,7 +19,7 @@ An intergration that creates devices & entites for sensors otherwise unsupported
 4. Fill in the required details (see Tuya Dev API below) and choose a refresh interval.
 5. Select your usually unsupported sensors from the list.
 
-## Installation (HACS) 
+## Installation (HACS Custom Repositories) 
 1. In Home Assistant, open **HACS** and choose **Integrations**.
 2. Click the three-dot menu and pick **Custom repositories**.
 3. Enter `https://github.com/kattcrazy/tuya_unsupported_sensors` as the repository URL and choose **Integration** as the category and click **Add**.
@@ -28,6 +28,9 @@ An intergration that creates devices & entites for sensors otherwise unsupported
 7. Go to `Settings > Devices & Integrations > Add Integration` and search for **Tuya Unsupported Sensors**.
 3. Fill in the required details (see Tuya Dev API below) and choose a refresh interval.
 4. Select your usually unsupported sensors from the list.
+
+## Installation (HACS) 
+1. Has been submitted to HACS as a pull request. Waiting for approval.
 
 ## Tuya Dev API
 Follow [this guide](https://github.com/azerty9971/xtend_tuya/blob/v4.2.4/docs/cloud_credentials.md) until step 5 to see how to set up the API credentials (credit @azerty9971)
