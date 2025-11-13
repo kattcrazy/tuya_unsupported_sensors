@@ -1,6 +1,6 @@
 An intergration that creates devices & entites for sensors otherwise unsupported by the main tuya/smart life intergration.
 
-## Sensors/entities supported
+### Sensors/entities supported
 - Temperature
 - Humidity
 - Battery
