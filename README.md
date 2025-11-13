@@ -1,18 +1,16 @@
-# Tuya Unsupported Sensors <img src="logo.png" alt="Tuya Unsupported Sensors logo" width="20" />
-## Overview
-
+# Tuya Unsupported Sensors <img src="logo.png" alt="Tuya Unsupported Sensors logo" width="30" />
 
 An intergration that creates devices & entites for sensors otherwise unsupported by the main tuya/smart life intergration.
 
-## Sensors/entities supported
+## Supported sensors/entities 
 - Temperature
 - Humidity
 - Battery
 - Door/contact
 
-## Will not support
-- Anything not listed above
+## Unsupported
 - Anything that requires control (e.g: lights) will not be added, this is for read-only sensors
+- If you have a read-only sensor you'd like to see you can submit an feature  request in the issues tab
 
 ## Installation (manual)
 1. Download the folder named `tuya_unsupported_sensors` inside `custom_components`
