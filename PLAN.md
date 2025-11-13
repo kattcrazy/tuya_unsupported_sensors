@@ -1,4 +1,4 @@
--# Tuya Unsupported Sensors – Quick Plan (≈190 words)
+-# Tuya Unsupported Sensors
 -
 -**Git cheatsheet**  
 - `git status` → check changes  
@@ -12,24 +12,6 @@
 - Work in every region (US/EU/CN/IN/SG/JP variants).  
 - Poll cloud data every 1–30 minutes (default 5).  
 - Keep Tuya `customName` for devices/entities; map friendly property names (Battery, Humidity, Temperature, Contact).
--
--**Key files**  
-- `custom_components/tuya_unsupported_sensors/__init__.py` – bootstraps API client, coordinator, and device registry entries.  
-- `manifest.json` – domain metadata (`config_flow`, `brand`, repo links, version).  
-- `const.py` – regions, endpoints, property maps, config keys.  
-- `tuya_api.py` – async client with token caching, `/v2.0/cloud/thing/device` pagination, property fetch.  
-- `config_flow.py` – guided setup (region → credentials → discovery → device selection → update interval) plus options flow.  
-- `coordinator.py` – DataUpdateCoordinator wrapping periodic updates.  
-- `sensor.py` / `binary_sensor.py` – dynamic entities with temperature scaling, Fahrenheit handling, battery text support, slugified entity IDs.  
-- `strings.json` – UI copy with Tuya credential guide link.  
-- `icon.png`/`icon.svg` – assets for brands submission.  
-- Root files: `README.md` (install + troubleshooting), `hacs.json` (HACS metadata), this plan, `test_api.py` (optional tooling).
--
--**Release checklist**  
-- Repository public with topics (`home-assistant`, `tuya`, `integration`).  
-- Update icons in the Home Assistant brands repo.  
-- Tag a GitHub release (e.g., `v1.0.0`) once testing passes.  
-- When ready for HACS, ensure README, `hacs.json`, icon submission, and releases match the [publish requirements](https://www.hacs.xyz/docs/publish/start/).
 -
 -**Last Updated:** 9:33am 13/11/2025
 ==
