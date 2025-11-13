@@ -1,7 +1,6 @@
-# Tuya Unsupported Sensors
-
+# Tuya Unsupported Sensors <img src="logo.png" alt="Tuya Unsupported Sensors logo" width="20" />
 ## Overview
-![Tuya Unsupported Sensors logo](logo.png)
+
 
 An intergration that creates devices & entites for sensors otherwise unsupported by the main tuya/smart life intergration.
 
