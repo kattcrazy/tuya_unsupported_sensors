@@ -22,12 +22,12 @@ An intergration that creates devices & entites for sensors otherwise unsupported
 ## Installation (manual)
 1. Download the folder named `tuya_unsupported_sensors` inside `custom_components`
 2. Drag/upload it into your `custom_components` folder inside your Home Assistant configuration folder (for Home Assistant Docker, `custom_components` is inside the folder that holds your `configuration.yaml`).
-3. Go to `Settings > Devices & Integrations > Add Integration` and search for **Tuya Unsupported Sensors**.
+3. Go to `Settings > Devices & Integrations > Add Integration` and search for Tuya Unsupported Sensors.
 4. Fill in the required details (see Tuya Dev API below) and choose a refresh interval.
 5. Select your usually unsupported sensors from the list.
 
 ## Tuya Dev API
-Follow [this guide](https://github.com/azerty9971/xtend_tuya/blob/v4.2.4/docs/cloud_credentials.md) until step 5 to see how to set up the API credentials (credit @azerty9971)
+Follow [this guide](https://github.com/azerty9971/xtend_tuya/blob/v4.2.4/docs/cloud_credentials.md) until step 5 to see how to set up the API credentials (credit [@azerty9971](https://github.com/azerty9971).
 
 ## Troubleshooting
 Trouble finding devices/incorrect API key: Has your API expired?  
