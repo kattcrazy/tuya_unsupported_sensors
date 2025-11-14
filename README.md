@@ -35,7 +35,7 @@ Trouble finding devices/incorrect API key: Have you connected it to your app?
 Trouble finding devices: Do you have devices to add?  
 No entities in a device: Check the list of supported sensors
 
-### About
+## About
 This is my first ever github repo and my first time making a homeassistant intergration. I have tested it on my own setup and it works perfectly! Please report an issue if something doesn't work :)
 
 Support me [here](https://summersketches.com/product/support-me/)
