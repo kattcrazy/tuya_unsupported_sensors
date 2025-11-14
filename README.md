@@ -2,13 +2,13 @@
 
 An intergration that creates devices & entites for sensors otherwise unsupported by the main tuya/smart life intergration.
 
-## Supported sensors/entities 
+### Supported sensors/entities 
 - Temperature
 - Humidity
 - Battery
 - Door/contact
 
-## Unsupported
+### Unsupported
 - Anything that requires control (e.g: lights) will not be added, this is for read-only sensors
 - If you have a read-only sensor you'd like to see you can submit an feature  request in the issues tab
 
@@ -29,13 +29,13 @@ An intergration that creates devices & entites for sensors otherwise unsupported
 ## Tuya Dev API
 Follow [this guide](https://github.com/azerty9971/xtend_tuya/blob/v4.2.4/docs/cloud_credentials.md) until step 5 to see how to set up the API credentials (credit [@azerty9971](https://github.com/azerty9971)).
 
-## Troubleshooting
+### Troubleshooting
 Trouble finding devices/incorrect API key: Has your API expired?  
 Trouble finding devices/incorrect API key: Have you connected it to your app?  
 Trouble finding devices: Do you have devices to add?  
 No entities in a device: Check the list of supported sensors
 
-## About
+### About
 This is my first ever github repo and my first time making a homeassistant intergration. I have tested it on my own setup and it works perfectly! Please report an issue if something doesn't work :)
 
 Support me [here](https://summersketches.com/product/support-me/)
