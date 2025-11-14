@@ -27,7 +27,7 @@ An intergration that creates devices & entites for sensors otherwise unsupported
 5. Select your usually unsupported sensors from the list.
 
 ## Tuya Dev API
-Follow [this guide](https://github.com/azerty9971/xtend_tuya/blob/v4.2.4/docs/cloud_credentials.md) until step 5 to see how to set up the API credentials (credit [@azerty9971](https://github.com/azerty9971).
+Follow [this guide](https://github.com/azerty9971/xtend_tuya/blob/v4.2.4/docs/cloud_credentials.md) until step 5 to see how to set up the API credentials (credit [@azerty9971](https://github.com/azerty9971)).
 
 ## Troubleshooting
 Trouble finding devices/incorrect API key: Has your API expired?  
