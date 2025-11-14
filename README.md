@@ -13,7 +13,7 @@ An intergration that creates devices & entites for sensors otherwise unsupported
 - If you have a read-only sensor you'd like to see you can submit an feature  request in the issues tab
 
 ## Installation (HACS) 
-<a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=kattcrazy&category=intergration&repository=tuya_unsupported_sensors" target="_blank" rel="noreferrer noopener"><img src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Open your Home Assistant instance and open a repository inside the Home Assistant Community Store." /></a>
+1. <a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=kattcrazy&category=intergration&repository=tuya_unsupported_sensors" target="_blank" rel="noreferrer noopener"><img src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Open your Home Assistant instance and open a repository inside the Home Assistant Community Store." /></a>
 2. Press download and restart Home Assistant.
 3. Go to `Settings > Devices & Integrations > Add Integration` and search for Tuya Unsupported Sensors.
 4. Fill in the required details (see Tuya Dev API below) and choose a refresh interval.
