@@ -251,20 +251,36 @@ class ExtraTuyaSensor(CoordinatorEntity, SensorEntity):
         if _is_numeric_value(value):
             num_value = float(value)
             
-            # Tuya API returns temperature scaled by 10 (e.g., 217 = 21.7°C or 700 = 70°F)
-            # Apply scaling if temperature is above 100 (likely scaled)
-            # This works for both Celsius and Fahrenheit
-            if self._intended_device_class == SensorDeviceClass.TEMPERATURE and num_value > 100:
-                num_value = num_value / 10.0
+            # Tuya API returns temperature scaled by 10 (e.g., 212 = 21.2°C or 3400 = 340.0°F)
+            # Apply scaling if dividing by 10 gives a reasonable temperature value
+            if self._intended_device_class == SensorDeviceClass.TEMPERATURE:
                 unit_convert = device_data.get("temp_unit_convert", "c")
-                unit = "°F" if unit_convert and unit_convert.lower() == "f" else "°C"
-                _LOGGER.debug(
-                    "Scaled temperature for %s: %s -> %s%s",
-                    self._property_code,
-                    value,
-                    num_value,
-                    unit
-                )
+                is_fahrenheit = unit_convert and unit_convert.lower() == "f"
+                
+                # Check if value is an integer (not already a float with decimals)
+                is_integer = isinstance(value, int) or (isinstance(value, float) and value.is_integer())
+                
+                # Try dividing by 10 if value is >= 10 and is an integer
+                if is_integer and num_value >= 10:
+                    scaled_value = num_value / 10.0
+                    
+                    # Define reasonable temperature ranges
+                    if is_fahrenheit:
+                        min_temp, max_temp = -58.0, 400.0  # Allow oven temperatures
+                    else:
+                        min_temp, max_temp = -50.0, 100.0  # Allow boiling water
+                    
+                    # If scaled value is in reasonable range, use it
+                    if min_temp <= scaled_value <= max_temp:
+                        num_value = scaled_value
+                        unit = "°F" if is_fahrenheit else "°C"
+                        _LOGGER.debug(
+                            "Scaled temperature for %s: %s -> %s%s",
+                            self._property_code,
+                            value,
+                            num_value,
+                            unit
+                        )
             
             return num_value
         
