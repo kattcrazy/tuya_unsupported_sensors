@@ -46,6 +46,28 @@ class TuyaAPIClient:
         self._uid: Optional[str] = None
         
         _LOGGER.debug("Initialized TuyaAPIClient for region: %s", region)
+    
+    def _clear_token(self) -> None:
+        """Clear cached access token to force refresh on next request."""
+        self._access_token = None
+        self._token_expires_at = None
+        _LOGGER.debug("Cleared cached access token")
+    
+    def _is_token_invalid_error(self, json_result: Dict[str, Any]) -> bool:
+        """Check if API response indicates token is invalid.
+        
+        Args:
+            json_result: Parsed JSON response from API.
+            
+        Returns:
+            True if token is invalid, False otherwise.
+        """
+        if "success" in json_result and not json_result.get("success"):
+            error_code = json_result.get("code")
+            error_msg = json_result.get("msg", "").lower()
+            # Check for token invalid error (code 1010 or message contains "token")
+            return error_code == 1010 or "token" in error_msg
+        return False
 
     @staticmethod
     def _get_timestamp(now: Optional[datetime] = None) -> str:
@@ -210,12 +232,14 @@ class TuyaAPIClient:
             aiohttp.ClientError: If API request fails.
             ValueError: If API response is invalid.
         """
-        access_token = await self.get_access_token()
         all_devices: List[Dict[str, Any]] = []
         last_id: Optional[str] = None
         page_size = 20  # Maximum allowed by API
+        retry_count = 0
+        max_retries = 1
         
         while True:
+            access_token = await self.get_access_token()
             # Build query parameters
             params: Dict[str, Any] = {"page_size": page_size}
             if last_id:
@@ -258,7 +282,23 @@ class TuyaAPIClient:
             try:
                 json_result = json.loads(response_text)
                 
-                # Check for API errors in response
+                # Check for token invalid error and retry with fresh token
+                if self._is_token_invalid_error(json_result):
+                    if retry_count < max_retries:
+                        _LOGGER.warning("Token invalid during device discovery, clearing cache and retrying with fresh token")
+                        self._clear_token()
+                        retry_count += 1
+                        last_id = None  # Reset pagination
+                        continue
+                    else:
+                        error_msg = json_result.get("msg", "Unknown error")
+                        error_code = json_result.get("code", "unknown")
+                        raise ValueError(f"Tuya API error after token refresh: {error_msg} (code: {error_code})")
+                
+                # Reset retry count on successful request
+                retry_count = 0
+                
+                # Check for other API errors in response
                 if "success" in json_result and not json_result["success"]:
                     error_msg = json_result.get("msg", "Unknown error")
                     error_code = json_result.get("code", "unknown")
@@ -330,46 +370,69 @@ class TuyaAPIClient:
         if not device_id:
             raise ValueError("device_id cannot be empty")
         
-        access_token = await self.get_access_token()
+        # Retry once if token is invalid
+        for attempt in range(2):
+            access_token = await self.get_access_token()
+            
+            url_path = PROPERTIES_URL.format(device_id=device_id)
+            timestamp = self._get_timestamp()
+            string_to_sign = (
+                self._client_id + access_token + timestamp + "GET\n" + EMPTY_BODY + "\n" + "\n" + url_path
+            )
+            signed_string = self._get_sign(string_to_sign, self._client_secret)
+            
+            headers = {
+                "client_id": self._client_id,
+                "sign": signed_string,
+                "access_token": access_token,
+                "t": timestamp,
+                "mode": "cors",
+                "sign_method": "HMAC-SHA256",
+                "Content-Type": "application/json",
+            }
+            
+            url = self._base_url + url_path
+            _, response_text = await self._make_request(url, method="GET", headers=headers)
+            
+            try:
+                json_result = json.loads(response_text)
+                
+                # Check for token invalid error and retry with fresh token
+                if self._is_token_invalid_error(json_result):
+                    if attempt == 0:
+                        _LOGGER.warning("Token invalid, clearing cache and retrying with fresh token")
+                        self._clear_token()
+                        continue
+                    else:
+                        error_msg = json_result.get("msg", "Unknown error")
+                        error_code = json_result.get("code", "unknown")
+                        raise ValueError(f"Tuya API error after token refresh: {error_msg} (code: {error_code})")
+                
+                # Check for other API errors
+                if "success" in json_result and not json_result.get("success"):
+                    error_msg = json_result.get("msg", "Unknown error")
+                    error_code = json_result.get("code", "unknown")
+                    raise ValueError(f"Tuya API error: {error_msg} (code: {error_code})")
+                
+                if "result" not in json_result:
+                    raise ValueError(f"Invalid API response: {json_result}")
+                
+                result = json_result["result"]
+                if "properties" not in result:
+                    raise ValueError(f"Properties not found in response: {result}")
+                
+                properties = result["properties"]
+                if not isinstance(properties, list):
+                    raise ValueError(f"Expected list of properties, got: {type(properties)}")
+                
+                output = {prop.get("code"): prop.get("value") for prop in properties if "code" in prop}
+                
+                _LOGGER.debug("Retrieved %d properties for device %s", len(output), device_id)
+                return output
+                
+            except json.JSONDecodeError as error:
+                _LOGGER.error("Failed to parse device properties response: %s", error)
+                raise ValueError(f"Invalid JSON response: {response_text}") from error
         
-        url_path = PROPERTIES_URL.format(device_id=device_id)
-        timestamp = self._get_timestamp()
-        string_to_sign = (
-            self._client_id + access_token + timestamp + "GET\n" + EMPTY_BODY + "\n" + "\n" + url_path
-        )
-        signed_string = self._get_sign(string_to_sign, self._client_secret)
-        
-        headers = {
-            "client_id": self._client_id,
-            "sign": signed_string,
-            "access_token": access_token,
-            "t": timestamp,
-            "mode": "cors",
-            "sign_method": "HMAC-SHA256",
-            "Content-Type": "application/json",
-        }
-        
-        url = self._base_url + url_path
-        _, response_text = await self._make_request(url, method="GET", headers=headers)
-        
-        try:
-            json_result = json.loads(response_text)
-            if "result" not in json_result:
-                raise ValueError(f"Invalid API response: {json_result}")
-            
-            result = json_result["result"]
-            if "properties" not in result:
-                raise ValueError(f"Properties not found in response: {result}")
-            
-            properties = result["properties"]
-            if not isinstance(properties, list):
-                raise ValueError(f"Expected list of properties, got: {type(properties)}")
-            
-            output = {prop.get("code"): prop.get("value") for prop in properties if "code" in prop}
-            
-            _LOGGER.debug("Retrieved %d properties for device %s", len(output), device_id)
-            return output
-            
-        except json.JSONDecodeError as error:
-            _LOGGER.error("Failed to parse device properties response: %s", error)
-            raise ValueError(f"Invalid JSON response: {response_text}") from error
+        # Should never reach here, but just in case
+        raise ValueError("Failed to get device properties after retry")
