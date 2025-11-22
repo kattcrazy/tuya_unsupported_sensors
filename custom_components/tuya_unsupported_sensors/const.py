@@ -26,6 +26,7 @@ REGIONS = {
 LOGIN_URL = "/v1.0/token?grant_type=1"
 DEVICE_LIST_URL = "/v2.0/cloud/thing/device"
 PROPERTIES_URL = "/v2.0/cloud/thing/{device_id}/shadow/properties"
+MODEL_URL = "/v2.0/cloud/thing/{device_id}/model"
 
 EMPTY_BODY = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 

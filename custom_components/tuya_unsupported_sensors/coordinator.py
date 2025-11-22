@@ -68,6 +68,19 @@ class ExtraTuyaSensorsDataUpdateCoordinator(DataUpdateCoordinator):
                 properties = await self.client.get_device_properties(device_id)
                 data[device_id] = properties
                 _LOGGER.debug("Updated data for device %s: %s", device_id, properties)
+                
+                # Fetch and cache property scales if not already cached
+                # This ensures scales are available for value conversion
+                if device_id not in self.client._property_scales:
+                    try:
+                        model_response = await self.client.get_device_model(device_id)
+                        scales = self.client._extract_property_scales(model_response)
+                        self.client._property_scales[device_id] = scales
+                        _LOGGER.debug("Cached scales for device %s: %s", device_id, scales)
+                    except Exception as scale_err:
+                        _LOGGER.debug("Could not fetch scales for device %s: %s", device_id, scale_err)
+                        # Continue without scales - values will be used as-is
+                        
             except Exception as err:
                 _LOGGER.error("Error updating device %s: %s", device_id, err)
                 data[device_id] = {}

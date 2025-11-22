@@ -15,6 +15,7 @@ from .const import (
     LOGIN_URL,
     DEVICE_LIST_URL,
     PROPERTIES_URL,
+    MODEL_URL,
     REGIONS,
 )
 
@@ -44,6 +45,9 @@ class TuyaAPIClient:
         self._access_token: Optional[str] = None
         self._token_expires_at: Optional[datetime] = None
         self._uid: Optional[str] = None
+        
+        # Cache for property scales: {device_id: {property_code: scale}}
+        self._property_scales: Dict[str, Dict[str, int]] = {}
         
         _LOGGER.debug("Initialized TuyaAPIClient for region: %s", region)
     
@@ -433,6 +437,130 @@ class TuyaAPIClient:
             except json.JSONDecodeError as error:
                 _LOGGER.error("Failed to parse device properties response: %s", error)
                 raise ValueError(f"Invalid JSON response: {response_text}") from error
+
+    async def get_device_model(self, device_id: str) -> Dict[str, Any]:
+        """Get device model/schema for a specific device.
+        
+        Args:
+            device_id: Tuya device ID.
+            
+        Returns:
+            Dictionary containing the model response.
+            
+        Raises:
+            aiohttp.ClientError: If API request fails.
+            ValueError: If API response is invalid or device_id is empty.
+        """
+        if not device_id:
+            raise ValueError("device_id cannot be empty")
+        
+        access_token = await self.get_access_token()
+        
+        url_path = MODEL_URL.format(device_id=device_id)
+        timestamp = self._get_timestamp()
+        string_to_sign = (
+            self._client_id + access_token + timestamp + "GET\n" + EMPTY_BODY + "\n" + "\n" + url_path
+        )
+        signed_string = self._get_sign(string_to_sign, self._client_secret)
+        
+        headers = {
+            "client_id": self._client_id,
+            "sign": signed_string,
+            "access_token": access_token,
+            "t": timestamp,
+            "mode": "cors",
+            "sign_method": "HMAC-SHA256",
+            "Content-Type": "application/json",
+        }
+        
+        url = self._base_url + url_path
+        _, response_text = await self._make_request(url, method="GET", headers=headers)
+        
+        try:
+            json_result = json.loads(response_text)
+            if "result" not in json_result:
+                raise ValueError(f"Invalid API response: {json_result}")
+            
+            return json_result
+            
+        except json.JSONDecodeError as error:
+            _LOGGER.error("Failed to parse device model response: %s", error)
+            raise ValueError(f"Invalid JSON response: {response_text}") from error
+
+    def _extract_property_scales(self, model_response: Dict[str, Any]) -> Dict[str, int]:
+        """Extract scale information for each property from the model response.
+        
+        Args:
+            model_response: The response from get_device_model.
+            
+        Returns:
+            Dictionary mapping property codes to their scale values.
+            Example: {"temp_current": 1, "humidity_value": 0}
+        """
+        scales: Dict[str, int] = {}
+        try:
+            if "result" in model_response and "model" in model_response["result"]:
+                model_str = model_response["result"]["model"]
+                model_data = json.loads(model_str)
+                
+                # Look for properties in services
+                if "services" in model_data:
+                    for service in model_data["services"]:
+                        # Check properties in service
+                        if "properties" in service:
+                            for prop in service["properties"]:
+                                code = prop.get("code")
+                                type_spec = prop.get("typeSpec", {})
+                                scale = type_spec.get("scale")
+                                if code and scale is not None:
+                                    scales[code] = scale
+                                    _LOGGER.debug("Found scale for %s: %s", code, scale)
+        except Exception as e:
+            _LOGGER.error("Error extracting scales from model: %s", e)
+        
+        return scales
+
+    def get_cached_property_scale(self, device_id: str, property_code: str) -> Optional[int]:
+        """Get the cached scale for a specific property (synchronous).
+        
+        This method only returns cached scales. Scales should be fetched
+        during coordinator updates using get_device_model and _extract_property_scales.
+        
+        Args:
+            device_id: Tuya device ID.
+            property_code: Property code (e.g., "temp_current").
+            
+        Returns:
+            Scale value (e.g., 1 means divide by 10, 0 means no scaling), or None if not found.
+        """
+        if device_id in self._property_scales:
+            return self._property_scales[device_id].get(property_code)
+        return None
+
+    async def get_property_scale(self, device_id: str, property_code: str) -> Optional[int]:
+        """Get the scale for a specific property, with caching.
+        
+        Args:
+            device_id: Tuya device ID.
+            property_code: Property code (e.g., "temp_current").
+            
+        Returns:
+            Scale value (e.g., 1 means divide by 10, 0 means no scaling), or None if not found.
+        """
+        # Check cache first
+        if device_id in self._property_scales:
+            return self._property_scales[device_id].get(property_code)
+        
+        # Fetch model and extract scales
+        try:
+            model_response = await self.get_device_model(device_id)
+            scales = self._extract_property_scales(model_response)
+            self._property_scales[device_id] = scales
+            _LOGGER.debug("Cached scales for device %s: %s", device_id, scales)
+            return scales.get(property_code)
+        except Exception as e:
+            _LOGGER.warning("Failed to get scale for device %s property %s: %s", device_id, property_code, e)
+            return None
         
         # Should never reach here, but just in case
         raise ValueError("Failed to get device properties after retry")

@@ -251,36 +251,33 @@ class ExtraTuyaSensor(CoordinatorEntity, SensorEntity):
         if _is_numeric_value(value):
             num_value = float(value)
             
-            # Tuya API returns temperature scaled by 10 (e.g., 212 = 21.2°C or 3400 = 340.0°F)
-            # Apply scaling if dividing by 10 gives a reasonable temperature value
-            if self._intended_device_class == SensorDeviceClass.TEMPERATURE:
-                unit_convert = device_data.get("temp_unit_convert", "c")
-                is_fahrenheit = unit_convert and unit_convert.lower() == "f"
+            # Get scale from device model to properly convert values
+            # Scale indicates division factor: scale=1 means divide by 10^1=10, scale=0 means no scaling
+            # Scales are cached in the API client and fetched during coordinator updates
+            try:
+                # Get cached scale (synchronous - scales are fetched during coordinator updates)
+                scale = self.coordinator.client.get_cached_property_scale(
+                    self._device_id, self._property_code
+                )
                 
-                # Check if value is an integer (not already a float with decimals)
-                is_integer = isinstance(value, int) or (isinstance(value, float) and value.is_integer())
-                
-                # Try dividing by 10 if value is >= 10 and is an integer
-                if is_integer and num_value >= 10:
-                    scaled_value = num_value / 10.0
-                    
-                    # Define reasonable temperature ranges
-                    if is_fahrenheit:
-                        min_temp, max_temp = -58.0, 400.0  # Allow oven temperatures
-                    else:
-                        min_temp, max_temp = -50.0, 100.0  # Allow boiling water
-                    
-                    # If scaled value is in reasonable range, use it
-                    if min_temp <= scaled_value <= max_temp:
-                        num_value = scaled_value
-                        unit = "°F" if is_fahrenheit else "°C"
-                        _LOGGER.debug(
-                            "Scaled temperature for %s: %s -> %s%s",
-                            self._property_code,
-                            value,
-                            num_value,
-                            unit
-                        )
+                if scale is not None and scale > 0:
+                    divisor = 10 ** scale
+                    num_value = num_value / divisor
+                    _LOGGER.debug(
+                        "Applied scale %d (divide by %d) to %s: %s -> %s",
+                        scale,
+                        divisor,
+                        self._property_code,
+                        value,
+                        num_value
+                    )
+            except Exception as e:
+                _LOGGER.debug(
+                    "Could not get scale for %s.%s, using raw value: %s",
+                    self._device_id,
+                    self._property_code,
+                    e
+                )
             
             return num_value
         
