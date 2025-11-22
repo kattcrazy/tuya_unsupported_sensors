@@ -38,24 +38,12 @@ SENSOR_PROPERTY_CODES = {
 }
 
 BINARY_SENSOR_PROPERTY_CODES = {
-    "contact": [
-        "contact",
-        "doorcontact_state",
-        "door_sensor_state",
-        "door_state",
-        "contact_state",
-        "door",
-        "sensor_state",
-        "doorcontact",
-        "door_contact",
-        "doorcontactstate",
-        "doorsensorstate",
-    ],
+    "contact": ["contact", "doorcontact_state", "door_sensor_state"],
     "motion": ["motion", "pir", "pir_state"],
     "online": ["online"],
 }
 
 BINARY_SENSOR_VALUE_MAP = {
-    "on": ["true", "1", "open", "pir", "opened", "open_state", "on_state"],
-    "off": ["false", "0", "close", "none", "closed", "close_state", "off_state"],
+    "on": ["true", "1", "open", "pir"],
+    "off": ["false", "0", "close", "none"],
 }

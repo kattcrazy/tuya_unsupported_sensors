@@ -404,12 +404,30 @@ class TuyaAPIClient:
                 # Check for token invalid error and retry with fresh token
                 if self._is_token_invalid_error(json_result):
                     if attempt == 0:
-                        _LOGGER.warning("Token invalid, clearing cache and retrying with fresh token")
+                        # Calculate token age for detailed logging
+                        token_age_hours = None
+                        if self._token_expires_at:
+                            token_age = (datetime.now() - (self._token_expires_at - timedelta(seconds=7200))).total_seconds()
+                            token_age_hours = token_age / 3600
+                        
+                        _LOGGER.error(
+                            "ERROR 1010 (Token Invalid) detected in API call. "
+                            "REASON: Tuya API access tokens expire after approximately 2 hours (7200 seconds). "
+                            "Current token age: %s hours. "
+                            "ACTION: Clearing cached token and requesting new token. "
+                            "This is normal behavior and will be handled automatically.",
+                            f"{token_age_hours:.2f}" if token_age_hours else "unknown"
+                        )
                         self._clear_token()
                         continue
                     else:
                         error_msg = json_result.get("msg", "Unknown error")
                         error_code = json_result.get("code", "unknown")
+                        _LOGGER.error(
+                            "ERROR 1010 (Token Invalid) persists after token refresh attempt. "
+                            "REASON: Token refresh may have failed or API credentials are invalid. "
+                            "Check your API client_id and client_secret in integration settings."
+                        )
                         raise ValueError(f"Tuya API error after token refresh: {error_msg} (code: {error_code})")
                 
                 # Check for other API errors
