@@ -39,6 +39,24 @@ def _is_binary_value(value: Any) -> bool:
     return False
 
 
+def _is_likely_contact_sensor(property_code: str, value: Any) -> bool:
+    """Check if property code and value suggest a contact sensor.
+    
+    This is a heuristic to catch contact sensors that use non-standard property codes.
+    """
+    property_code_lower = property_code.lower()
+    
+    # Check if property code contains contact/door/sensor keywords
+    contact_keywords = ["door", "contact", "sensor", "switch"]
+    has_contact_keyword = any(keyword in property_code_lower for keyword in contact_keywords)
+    
+    if not has_contact_keyword:
+        return False
+    
+    # Check if value is binary-like
+    return _is_binary_value(value)
+
+
 def _normalize_binary_value(value: Any) -> bool:
     """Normalize binary sensor value to boolean."""
     if isinstance(value, bool):
@@ -119,8 +137,27 @@ async def async_setup_entry(
         
         device_data = coordinator.data.get(device_id, {})
         
+        if not device_data:
+            _LOGGER.warning(
+                "No data available for device %s (%s). Device may be offline or have no properties.",
+                device_id,
+                device_name
+            )
+            continue
+        
+        _LOGGER.debug(
+            "Processing device %s (%s) with properties: %s",
+            device_id,
+            device_name,
+            list(device_data.keys())
+        )
+        
         for property_code, value in device_data.items():
             property_code_lower = property_code.lower()
+            
+            # Skip non-sensor properties
+            if property_code_lower in ("temp_unit_convert",):
+                continue
             
             # Prioritize known binary sensor property codes
             if property_code_lower in binary_codes:
@@ -142,7 +179,31 @@ async def async_setup_entry(
                     property_code=property_code,
                 )
                 entities.append(entity)
+            elif _is_likely_contact_sensor(property_code, value):
+                # Heuristic: property codes containing contact/door keywords with binary-like values
+                _LOGGER.debug(
+                    "Detected likely contact sensor: %s.%s = %s",
+                    device_id,
+                    property_code,
+                    value
+                )
+                entity = ExtraTuyaBinarySensor(
+                    coordinator=coordinator,
+                    device_id=device_id,
+                    device_name=device_name,
+                    device_model=device_model,
+                    property_code=property_code,
+                )
+                entities.append(entity)
     
+    if not entities:
+        _LOGGER.warning(
+            "No binary sensor entities created for devices: %s. "
+            "This may indicate devices have no binary properties or use unrecognized property codes.",
+            device_ids
+        )
+    
+    _LOGGER.info("Created %d binary sensor entities", len(entities))
     async_add_entities(entities)
 
 
