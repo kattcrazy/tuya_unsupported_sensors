@@ -34,13 +34,13 @@ class ExtraTuyaSensorsDataUpdateCoordinator(DataUpdateCoordinator):
             hass: Home Assistant instance.
             client: Tuya API client instance.
             device_ids: List of device IDs to monitor.
-            update_interval: Update interval in minutes.
+            update_interval: Update interval in seconds.
         """
         self.client = client
         self.device_ids = device_ids
-        self.update_interval_minutes = update_interval
+        self.update_interval_seconds = update_interval
         
-        update_interval_timedelta = timedelta(minutes=update_interval)
+        update_interval_timedelta = timedelta(seconds=update_interval)
         
         # Track when each device was last successfully updated
         self._last_successful_update: Dict[str, datetime] = {}
@@ -68,7 +68,7 @@ class ExtraTuyaSensorsDataUpdateCoordinator(DataUpdateCoordinator):
         data: Dict[str, Dict[str, Any]] = {}
         token_error_occurred = False
         now = datetime.now()
-        max_stale_time = timedelta(minutes=self.update_interval_minutes)  # Allow 1x update interval for stale data
+        max_stale_time = timedelta(seconds=self.update_interval_seconds)  # Allow 1x update interval for stale data
         
         for device_id in self.device_ids:
             try:

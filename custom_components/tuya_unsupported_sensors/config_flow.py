@@ -292,7 +292,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 try:
                     update_interval = int(update_interval)
                     if update_interval < MIN_UPDATE_INTERVAL or update_interval > MAX_UPDATE_INTERVAL:
-                        errors[CONF_UPDATE_INTERVAL] = f"Must be between {MIN_UPDATE_INTERVAL} and {MAX_UPDATE_INTERVAL} minutes"
+                        errors[CONF_UPDATE_INTERVAL] = f"Must be between {MIN_UPDATE_INTERVAL} and {MAX_UPDATE_INTERVAL} seconds"
                     else:
                         return self.async_create_entry(
                             title=f"Tuya Unsupported Sensors ({self._region.upper()})",
@@ -307,20 +307,30 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 except (ValueError, TypeError):
                     errors[CONF_UPDATE_INTERVAL] = "Must be a valid number"
         
+        num_devices = len(self._devices) if self._devices else 0
+        recommended_min = max(MIN_UPDATE_INTERVAL, (num_devices + 49) // 50)
+        requests_per_second = num_devices / DEFAULT_UPDATE_INTERVAL if DEFAULT_UPDATE_INTERVAL > 0 else 0
+        
         data_schema = vol.Schema(
             {
                 vol.Required(
                     CONF_UPDATE_INTERVAL,
                     default=DEFAULT_UPDATE_INTERVAL,
-                    description={"suffix": "minutes"},
+                    description={"suffix": "seconds"},
                 ): cv.positive_int,
             }
+        )
+        
+        description = (
+            f"API limit: 50 requests/second.\n"
+            f"With {num_devices} device(s), min {recommended_min}s is recommended, default {DEFAULT_UPDATE_INTERVAL}s = {requests_per_second:.1f} req/s"
         )
         
         return self.async_show_form(
             step_id="update_interval",
             data_schema=data_schema,
             errors=errors,
+            description_placeholders={"info": description},
         )
         
 
@@ -365,7 +375,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 try:
                     update_interval = int(update_interval)
                     if update_interval < MIN_UPDATE_INTERVAL or update_interval > MAX_UPDATE_INTERVAL:
-                        errors[CONF_UPDATE_INTERVAL] = f"Must be between {MIN_UPDATE_INTERVAL} and {MAX_UPDATE_INTERVAL} minutes"
+                        errors[CONF_UPDATE_INTERVAL] = f"Must be between {MIN_UPDATE_INTERVAL} and {MAX_UPDATE_INTERVAL} seconds"
                     else:
                         new_data = {**self.config_entry.data}
                         new_data[CONF_UPDATE_INTERVAL] = update_interval
@@ -380,18 +390,28 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL
         )
         
+        num_devices = len(self.config_entry.data.get(CONF_DEVICES, []))
+        recommended_min = max(MIN_UPDATE_INTERVAL, (num_devices + 49) // 50)
+        current_requests_per_second = num_devices / current_interval if current_interval > 0 else 0
+        
         data_schema = vol.Schema(
             {
                 vol.Required(
                     CONF_UPDATE_INTERVAL,
                     default=current_interval,
-                    description={"suffix": "minutes"},
+                    description={"suffix": "seconds"},
                 ): cv.positive_int,
             }
+        )
+        
+        description = (
+            f"API limit: 50 requests/second.\n"
+            f"With {num_devices} device(s), min {recommended_min}s is recommended, currently using {current_interval}s = {current_requests_per_second:.1f} req/s"
         )
         
         return self.async_show_form(
             step_id="init",
             data_schema=data_schema,
             errors=errors,
+            description_placeholders={"info": description},
         )
