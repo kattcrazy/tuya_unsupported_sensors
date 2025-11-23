@@ -39,6 +39,8 @@ Follow [this guide](https://github.com/azerty9971/xtend_tuya/blob/v4.2.4/docs/cl
 
 **Error 1010 (Token Invalid):** Tuya API access tokens expire after approximately 2 hours, and the integration automatically refreshes tokens when this happens. If the issue persists, verify your API credentials are correct and create an issue containing your logs.
 
+**Sensors updating too slowly or rate limit errors:** Tuya API has a limit of 50 requests/second for device properties. To avoid exceeding this limit, your update interval (in seconds) should be at least: **Number of devices ÷ 50**. For example, with 100 devices, use at least 2 seconds; with 10 devices, 1 second is fine. The default 60 seconds supports up to 3000 devices.
+
 ## About
 This is my first ever github repo and my first time making a homeassistant intergration. I have tested it on my own setup and it works perfectly! Please report an issue if something doesn't work, I'll try my best to fix it.
 
