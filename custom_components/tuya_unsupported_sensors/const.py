@@ -12,6 +12,16 @@ DEFAULT_UPDATE_INTERVAL = 60
 MIN_UPDATE_INTERVAL = 1
 MAX_UPDATE_INTERVAL = 1800
 
+# IOT CORE TRIAL PLAN limits
+TRIAL_MAX_DEVICES = 50
+TRIAL_MAX_CONTROLLABLE_DEVICES = 10
+TRIAL_MAX_API_CALLS_PER_MONTH = 26000
+TRIAL_MAX_MESSAGES_PER_MONTH = 68000
+# Approximate seconds in a month (30 days)
+SECONDS_PER_MONTH = 30 * 24 * 60 * 60  # 2,592,000
+# Estimated messages per API call (based on 68k messages / 26k API calls ≈ 2.6)
+MESSAGES_PER_API_CALL = 2.6
+
 REGIONS = {
     "us": "https://openapi.tuyaus.com",
     "us_east": "https://openapi-ueaz.tuyaus.com",
@@ -47,3 +57,4 @@ BINARY_SENSOR_VALUE_MAP = {
     "on": ["true", "1", "open", "pir"],
     "off": ["false", "0", "close", "none"],
 }
+

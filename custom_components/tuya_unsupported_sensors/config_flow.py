@@ -22,6 +22,11 @@ from .const import (
     MAX_UPDATE_INTERVAL,
     DOMAIN,
     REGIONS,
+    TRIAL_MAX_DEVICES,
+    TRIAL_MAX_API_CALLS_PER_MONTH,
+    TRIAL_MAX_MESSAGES_PER_MONTH,
+    SECONDS_PER_MONTH,
+    MESSAGES_PER_API_CALL,
 )
 from .tuya_api import TuyaAPIClient
 
@@ -34,6 +39,99 @@ class CannotConnect(HomeAssistantError):
 
 class InvalidAuth(HomeAssistantError):
     """Error to indicate there is invalid auth."""
+
+
+def _calculate_monthly_usage(num_devices: int, update_interval: int) -> tuple[int, int]:
+    """Calculate monthly API calls and messages based on device count and update interval.
+    
+    Args:
+        num_devices: Number of devices being monitored.
+        update_interval: Update interval in seconds.
+        
+    Returns:
+        Tuple of (api_calls_per_month, messages_per_month).
+    """
+    if update_interval <= 0:
+        return (0, 0)
+    
+    api_calls_per_month = int((SECONDS_PER_MONTH / update_interval) * num_devices)
+    messages_per_month = int(api_calls_per_month * MESSAGES_PER_API_CALL)
+    
+    return (api_calls_per_month, messages_per_month)
+
+
+def _calculate_minimum_interval(num_devices: int) -> int:
+    """Calculate minimum update interval to stay within IOT CORE TRIAL PLAN limits.
+    
+    Formula:
+        API calls limit: interval >= (SECONDS_PER_MONTH × num_devices) / TRIAL_MAX_API_CALLS_PER_MONTH
+        Messages limit: interval >= (SECONDS_PER_MONTH × num_devices × MESSAGES_PER_API_CALL) / TRIAL_MAX_MESSAGES_PER_MONTH
+    
+    With actual constants:
+        API calls: interval >= (2,592,000 × num_devices) / 26,000 ≈ 99.69 × num_devices
+        Messages: interval >= (2,592,000 × num_devices × 2.6) / 68,000 ≈ 99.11 × num_devices
+    
+    The API calls limit is slightly more restrictive (requires ~99.69s per device vs ~99.11s),
+    so we use the maximum of both to ensure both limits are respected.
+    
+    Args:
+        num_devices: Number of devices being monitored.
+        
+    Returns:
+        Minimum update interval in seconds needed to stay within limits.
+    """
+    if num_devices <= 0:
+        return MIN_UPDATE_INTERVAL
+    
+    # Calculate based on API calls limit: (2,592,000 × num_devices) / 26,000
+    min_interval_api = (SECONDS_PER_MONTH * num_devices) / TRIAL_MAX_API_CALLS_PER_MONTH
+    
+    # Calculate based on messages limit: (2,592,000 × num_devices × 2.6) / 68,000
+    min_interval_messages = (SECONDS_PER_MONTH * num_devices * MESSAGES_PER_API_CALL) / TRIAL_MAX_MESSAGES_PER_MONTH
+    
+    # Use the larger of the two (more restrictive limit) to ensure both limits are respected
+    min_interval = max(min_interval_api, min_interval_messages)
+    
+    # Round up to nearest integer and ensure it's at least MIN_UPDATE_INTERVAL
+    min_interval = max(int(min_interval) + (1 if min_interval % 1 > 0 else 0), MIN_UPDATE_INTERVAL)
+    
+    return min_interval
+
+
+def _check_trial_limits(num_devices: int, update_interval: int) -> tuple[bool, str]:
+    """Check if configuration exceeds IOT CORE TRIAL PLAN limits.
+    
+    Args:
+        num_devices: Number of devices being monitored.
+        update_interval: Update interval in seconds.
+        
+    Returns:
+        Tuple of (exceeds_limits, warning_message).
+        If exceeds_limits is True, warning_message contains the warning text with minimum interval.
+    """
+    warnings = []
+    
+    # Check device count limit
+    if num_devices > TRIAL_MAX_DEVICES:
+        warnings.append(f"device count ({num_devices}) exceeds maximum of {TRIAL_MAX_DEVICES}")
+    
+    # Calculate monthly usage
+    api_calls_per_month, messages_per_month = _calculate_monthly_usage(num_devices, update_interval)
+    
+    # Check API calls limit
+    if api_calls_per_month > TRIAL_MAX_API_CALLS_PER_MONTH:
+        warnings.append(f"API calls ({api_calls_per_month:,}) exceeds monthly limit of {TRIAL_MAX_API_CALLS_PER_MONTH:,}")
+    
+    # Check messages limit
+    if messages_per_month > TRIAL_MAX_MESSAGES_PER_MONTH:
+        warnings.append(f"messages ({messages_per_month:,}) exceeds monthly limit of {TRIAL_MAX_MESSAGES_PER_MONTH:,}")
+    
+    if warnings:
+        min_interval = _calculate_minimum_interval(num_devices)
+        warning_msg = f"Warning: Your selection of {update_interval} second intervals with {num_devices} device(s) will go over the IOT CORE TRIAL PLAN limits. Recommended minimum interval: {min_interval} seconds"
+        return (True, warning_msg)
+    
+    return (False, "")
 
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -215,8 +313,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if not selected_devices:
                 errors["base"] = "no_devices_selected"
             else:
-                self._devices = selected_devices
-                return await self.async_step_update_interval()
+                if len(selected_devices) > TRIAL_MAX_DEVICES:
+                    errors["base"] = f"Device count ({len(selected_devices)}) exceeds IOT CORE TRIAL PLAN limit of {TRIAL_MAX_DEVICES} devices"
+                else:
+                    self._devices = selected_devices
+                    return await self.async_step_update_interval()
         
         # Get device IDs already added via other Tuya integrations
         existing_device_ids = self._get_existing_tuya_device_ids()
@@ -294,22 +395,26 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     if update_interval < MIN_UPDATE_INTERVAL or update_interval > MAX_UPDATE_INTERVAL:
                         errors[CONF_UPDATE_INTERVAL] = f"Must be between {MIN_UPDATE_INTERVAL} and {MAX_UPDATE_INTERVAL} seconds"
                     else:
-                        return self.async_create_entry(
-                            title=f"Tuya Unsupported Sensors ({self._region.upper()})",
-                            data={
-                                CONF_CLIENT_ID: self._client_id,
-                                CONF_CLIENT_SECRET: self._client_secret,
-                                CONF_REGION: self._region,
-                                CONF_DEVICES: self._devices,
-                                CONF_UPDATE_INTERVAL: update_interval,
-                            },
-                        )
+                        num_devices = len(self._devices) if self._devices else 0
+                        exceeds_limits, warning_msg = _check_trial_limits(num_devices, update_interval)
+                        if exceeds_limits:
+                            errors[CONF_UPDATE_INTERVAL] = warning_msg
+                        else:
+                            return self.async_create_entry(
+                                title=f"Tuya Unsupported Sensors ({self._region.upper()})",
+                                data={
+                                    CONF_CLIENT_ID: self._client_id,
+                                    CONF_CLIENT_SECRET: self._client_secret,
+                                    CONF_REGION: self._region,
+                                    CONF_DEVICES: self._devices,
+                                    CONF_UPDATE_INTERVAL: update_interval,
+                                },
+                            )
                 except (ValueError, TypeError):
                     errors[CONF_UPDATE_INTERVAL] = "Must be a valid number"
         
         num_devices = len(self._devices) if self._devices else 0
-        recommended_min = max(MIN_UPDATE_INTERVAL, (num_devices + 49) // 50)
-        requests_per_second = num_devices / DEFAULT_UPDATE_INTERVAL if DEFAULT_UPDATE_INTERVAL > 0 else 0
+        exceeds_limits, warning_msg = _check_trial_limits(num_devices, DEFAULT_UPDATE_INTERVAL)
         
         data_schema = vol.Schema(
             {
@@ -321,10 +426,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             }
         )
         
-        description = (
-            f"API limit: 50 requests/second.\n"
-            f"With {num_devices} device(s), min {recommended_min}s is recommended, default {DEFAULT_UPDATE_INTERVAL}s = {requests_per_second:.1f} req/s"
-        )
+        description = ""
+        if exceeds_limits:
+            description = warning_msg
         
         return self.async_show_form(
             step_id="update_interval",
@@ -377,12 +481,17 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     if update_interval < MIN_UPDATE_INTERVAL or update_interval > MAX_UPDATE_INTERVAL:
                         errors[CONF_UPDATE_INTERVAL] = f"Must be between {MIN_UPDATE_INTERVAL} and {MAX_UPDATE_INTERVAL} seconds"
                     else:
-                        new_data = {**self.config_entry.data}
-                        new_data[CONF_UPDATE_INTERVAL] = update_interval
-                        self.hass.config_entries.async_update_entry(
-                            self.config_entry, data=new_data
-                        )
-                        return self.async_create_entry(title="", data={})
+                        num_devices = len(self.config_entry.data.get(CONF_DEVICES, []))
+                        exceeds_limits, warning_msg = _check_trial_limits(num_devices, update_interval)
+                        if exceeds_limits:
+                            errors[CONF_UPDATE_INTERVAL] = warning_msg
+                        else:
+                            new_data = {**self.config_entry.data}
+                            new_data[CONF_UPDATE_INTERVAL] = update_interval
+                            self.hass.config_entries.async_update_entry(
+                                self.config_entry, data=new_data
+                            )
+                            return self.async_create_entry(title="", data={})
                 except (ValueError, TypeError):
                     errors[CONF_UPDATE_INTERVAL] = "Must be a valid number"
         
@@ -391,8 +500,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         )
         
         num_devices = len(self.config_entry.data.get(CONF_DEVICES, []))
-        recommended_min = max(MIN_UPDATE_INTERVAL, (num_devices + 49) // 50)
-        current_requests_per_second = num_devices / current_interval if current_interval > 0 else 0
+        exceeds_limits, warning_msg = _check_trial_limits(num_devices, current_interval)
         
         data_schema = vol.Schema(
             {
@@ -404,10 +512,9 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             }
         )
         
-        description = (
-            f"API limit: 50 requests/second.\n"
-            f"With {num_devices} device(s), min {recommended_min}s is recommended, currently using {current_interval}s = {current_requests_per_second:.1f} req/s"
-        )
+        description = ""
+        if exceeds_limits:
+            description = warning_msg
         
         return self.async_show_form(
             step_id="init",

@@ -111,7 +111,7 @@ class ExtraTuyaSensorsDataUpdateCoordinator(DataUpdateCoordinator):
                         self.client._clear_token()
                         token_error_occurred = True
                     # Check if we can keep previous data (not too stale)
-                    if device_id in self.data and device_id in self._last_successful_update:
+                    if self.data is not None and device_id in self.data and device_id in self._last_successful_update:
                         time_since_update = now - self._last_successful_update[device_id]
                         if time_since_update <= max_stale_time:
                             _LOGGER.debug("Keeping previous data for device %s due to token error (last update: %s ago)", 
@@ -143,7 +143,7 @@ class ExtraTuyaSensorsDataUpdateCoordinator(DataUpdateCoordinator):
                         err
                     )
                     # Check if we can keep previous data (not too stale)
-                    if device_id in self.data and device_id in self._last_successful_update:
+                    if self.data is not None and device_id in self.data and device_id in self._last_successful_update:
                         time_since_update = now - self._last_successful_update[device_id]
                         if time_since_update <= max_stale_time:
                             _LOGGER.debug("Keeping previous data for device %s due to error (last update: %s ago)", 
@@ -176,7 +176,7 @@ class ExtraTuyaSensorsDataUpdateCoordinator(DataUpdateCoordinator):
                     exc_info=True
                 )
                 # Check if we can keep previous data (not too stale)
-                if device_id in self.data and device_id in self._last_successful_update:
+                if self.data is not None and device_id in self.data and device_id in self._last_successful_update:
                     time_since_update = now - self._last_successful_update[device_id]
                     if time_since_update <= max_stale_time:
                         _LOGGER.debug("Keeping previous data for device %s due to error (last update: %s ago)", 
@@ -237,7 +237,7 @@ class ExtraTuyaSensorsDataUpdateCoordinator(DataUpdateCoordinator):
                                 err
                             )
                         # Check if we can keep previous data (not too stale)
-                        if device_id in self.data and device_id in self._last_successful_update:
+                        if self.data is not None and device_id in self.data and device_id in self._last_successful_update:
                             time_since_update = retry_now - self._last_successful_update[device_id]
                             if time_since_update <= max_stale_time:
                                 retry_data[device_id] = self.data.get(device_id, {})

@@ -44,29 +44,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     device_ids = entry.data[CONF_DEVICES]
     update_interval = entry.data.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL)
     
-    # Migration: Convert old minute-based configs to seconds
-    # Old configs had values 1-30 (minutes), new configs use seconds
-    # If value is <= 30, assume it's in minutes and convert to seconds
-    if update_interval <= 30:
-        old_value = update_interval
-        update_interval = update_interval * 60
-        _LOGGER.info(
-            "Migrating update_interval from %d minutes to %d seconds",
-            old_value,
-            update_interval
-        )
-        # Clamp to valid range
-        if update_interval > MAX_UPDATE_INTERVAL:
-            update_interval = MAX_UPDATE_INTERVAL
-            _LOGGER.warning(
-                "Converted update_interval exceeds maximum (%d seconds), clamping to %d seconds",
-                old_value * 60,
-                MAX_UPDATE_INTERVAL
-            )
-        # Update config entry with converted value
-        new_data = {**entry.data, CONF_UPDATE_INTERVAL: update_interval}
-        hass.config_entries.async_update_entry(entry, data=new_data)
-    
     # Validate update_interval is within allowed range
     if update_interval < MIN_UPDATE_INTERVAL or update_interval > MAX_UPDATE_INTERVAL:
         _LOGGER.warning(
