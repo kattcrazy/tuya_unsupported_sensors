@@ -44,4 +44,4 @@ Follow [this guide](https://github.com/azerty9971/xtend_tuya/blob/v4.2.4/docs/cl
 ## About
 This is my first ever github repo and my first time making a homeassistant intergration. I have tested it on my own setup and it works perfectly! Please report an issue if something doesn't work, I'll try my best to fix it.
 
-Support me [here](https://summersketches.com/product/support-me/)
+Support me [here](https://kattcrazy.nz/product/support-me/)
