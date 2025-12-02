@@ -99,7 +99,7 @@ class ExtraTuyaSensorsDataUpdateCoordinator(DataUpdateCoordinator):
                         if self.client._token_expires_at:
                             token_age = (now - (self.client._token_expires_at - timedelta(seconds=7200))).total_seconds() / 3600
                         
-                        _LOGGER.error(
+                        _LOGGER.warning(
                             "ERROR 1010 (Token Invalid) detected for device %s. "
                             "REASON: Tuya API access tokens expire after ~2 hours. "
                             "Token age: %s hours. "

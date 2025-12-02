@@ -410,7 +410,7 @@ class TuyaAPIClient:
                             token_age = (datetime.now() - (self._token_expires_at - timedelta(seconds=7200))).total_seconds()
                             token_age_hours = token_age / 3600
                         
-                        _LOGGER.error(
+                        _LOGGER.warning(
                             "ERROR 1010 (Token Invalid) detected in API call. "
                             "REASON: Tuya API access tokens expire after approximately 2 hours (7200 seconds). "
                             "Current token age: %s hours. "
