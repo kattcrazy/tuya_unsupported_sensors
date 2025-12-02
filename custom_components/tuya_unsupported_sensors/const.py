@@ -29,7 +29,7 @@ REGIONS = {
     "eu_west": "https://openapi-weaz.tuyaeu.com",
     "cn": "https://openapi.tuyacn.com",
     "in": "https://openapi.tuyain.com",
-    "sg": "https://openapi.tuyasg.com",
+    "sg": "https://openapi-sg.iotbing.com",
     "jp": "https://openapi.tuyajp.com",
 }
 
