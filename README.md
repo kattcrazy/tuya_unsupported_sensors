@@ -30,7 +30,7 @@ An intergration that creates devices & entites for sensors otherwise unsupported
 ## Tuya Dev API
 Follow [this guide](https://github.com/azerty9971/xtend_tuya/blob/v4.2.4/docs/cloud_credentials.md) until step 5 to see how to set up the API credentials (credit [@azerty9971](https://github.com/azerty9971)).
 
-### Troubleshooting
+## Troubleshooting
 **Trouble finding devices/incorrect API key:** Has your API key expired? Have you followed the steps above?
 
 **Trouble finding devices:** Do you have devices to add? Have you followed the steps above?
@@ -39,7 +39,10 @@ Follow [this guide](https://github.com/azerty9971/xtend_tuya/blob/v4.2.4/docs/cl
 
 **Error 1010 (Token Invalid):** Tuya API access tokens expire after approximately 2 hours, and the integration automatically refreshes tokens when this happens. If the issue persists, verify your API credentials are correct and create an issue containing your logs.
 
-**Sensors updating too slowly or rate limit errors:** Please calculate your minimum update interval using the following equation to avoid rate limiting or running out of api calls. 99.69 x Number of Devices = Minimum Interval 
+**Sensors updating too slowly or rate limit errors:** Please calculate your minimum update interval using the following equation to avoid rate limiting or running out of api calls. 99.69 x Number of Devices = Minimum update interval 
+
+**Discovery_failed error** Download and run Datacenter_test.py. It will ask for your Tuya API details and then return the results of each different datacenter. The working datacenter is the one that your Tuya API Project needs to use. If it's not using that, please remake your Tuya cloud project following these steps up until step 5 https://github.com/azerty9971/xtend_tuya/blob/v4.2.4/docs/cloud_credentials.md  (credit [@azerty9971](https://github.com/azerty9971)). 
+
 
 ## About
 This is my first ever github repo and my first time making a homeassistant intergration. I have tested it on my own setup and it works perfectly! Please report an issue if something doesn't work, I'll try my best to fix it.
