@@ -5,13 +5,5 @@
 - `git add -A` → stage everything  
 - `git commit -m "short note"` → save snapshot  
 - `git push` → sync to GitHub
--
--**Scope & goals**  
-- Focus on Tuya sensors that the official integration misses.  
-- Discover all devices via Tuya Cloud, let the user manually pick the unsupported ones.  
-- Work in every region (US/EU/CN/IN/SG/JP variants).  
-- Poll cloud data every 1–30 minutes (default 5).  
-- Keep Tuya `customName` for devices/entities; map friendly property names (Battery, Humidity, Temperature, Contact).
--
--**Last Updated:** 9:33am 13/11/2025
+
 ==

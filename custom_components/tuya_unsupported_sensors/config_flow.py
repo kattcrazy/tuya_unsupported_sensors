@@ -134,6 +134,81 @@ def _check_trial_limits(num_devices: int, update_interval: int) -> tuple[bool, s
     return (False, "")
 
 
+def _get_existing_tuya_device_ids(hass: HomeAssistant) -> set:
+    """Get device IDs from other enabled Tuya integrations.
+    
+    Only checks devices that belong to enabled Tuya config entries,
+    have active entities (not unsupported), and only matches by device ID
+    (not by name) to avoid false positives.
+    
+    Args:
+        hass: Home Assistant instance.
+        
+    Returns:
+        Set of device IDs that are already added via other Tuya integrations.
+    """
+    existing_ids = set()
+    device_registry = dr.async_get(hass)
+    entity_registry = er.async_get(hass)
+    config_entry_registry = hass.config_entries
+    
+    # Check for devices from other Tuya integrations
+    tuya_domains = ["tuya", "localtuya", "tuyalocal", "extratuya"]
+    
+    # Get set of enabled config entry IDs for Tuya integrations
+    enabled_entry_ids = set()
+    for entry in config_entry_registry.async_entries():
+        if entry.domain in tuya_domains:
+            # Only count if entry is not disabled and not unsupported
+            if entry.disabled_by is None and not getattr(entry, 'pref_disable_new_entities', False):
+                enabled_entry_ids.add(entry.entry_id)
+    
+    for device_entry in device_registry.devices.values():
+        # Only check devices that belong to enabled config entries
+        device_entry_ids = device_entry.config_entries
+        
+        # Check if any of the device's config entries are enabled Tuya integrations
+        has_enabled_tuya_entry = False
+        for entry_id in device_entry_ids:
+            if entry_id in enabled_entry_ids:
+                has_enabled_tuya_entry = True
+                break
+        
+        if not has_enabled_tuya_entry:
+            continue
+        
+        # Check if device has any active entities (not unsupported)
+        # Unsupported devices have no entities or all entities are disabled
+        device_entities = er.async_entries_for_device(
+            entity_registry, device_entry.id
+        )
+        
+        # Filter out disabled entities and check if any active entities remain
+        active_entities = [
+            entity for entity in device_entities
+            if entity.disabled_by is None
+        ]
+        
+        # Skip devices with no active entities (unsupported devices)
+        if not active_entities:
+            continue
+        
+        # Only check devices that have Tuya domain identifiers
+        # This ensures we only match actual Tuya devices, not devices with similar names
+        for identifier in device_entry.identifiers:
+            if isinstance(identifier, tuple) and len(identifier) >= 2:
+                domain = identifier[0]
+                device_id = identifier[1]
+                
+                # Only add device IDs from Tuya integrations
+                # Don't match by name to avoid false positives with non-Tuya devices
+                if domain in tuya_domains:
+                    existing_ids.add(str(device_id))
+                    existing_ids.add(str(device_id).lower())
+    
+    return existing_ids
+
+
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Tuya Unsupported Sensors."""
 
@@ -233,74 +308,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         
         return await self.async_step_select_devices()
 
-    def _get_existing_tuya_device_ids(self) -> set:
-        """Get device IDs from other enabled Tuya integrations.
-        
-        Only checks devices that belong to enabled Tuya config entries,
-        have active entities (not unsupported), and only matches by device ID
-        (not by name) to avoid false positives.
-        """
-        existing_ids = set()
-        device_registry = dr.async_get(self.hass)
-        entity_registry = er.async_get(self.hass)
-        config_entry_registry = self.hass.config_entries
-        
-        # Check for devices from other Tuya integrations
-        tuya_domains = ["tuya", "localtuya", "tuyalocal", "extratuya"]
-        
-        # Get set of enabled config entry IDs for Tuya integrations
-        enabled_entry_ids = set()
-        for entry in config_entry_registry.async_entries():
-            if entry.domain in tuya_domains:
-                # Only count if entry is not disabled and not unsupported
-                if entry.disabled_by is None and not getattr(entry, 'pref_disable_new_entities', False):
-                    enabled_entry_ids.add(entry.entry_id)
-        
-        for device_entry in device_registry.devices.values():
-            # Only check devices that belong to enabled config entries
-            device_entry_ids = device_entry.config_entries
-            
-            # Check if any of the device's config entries are enabled Tuya integrations
-            has_enabled_tuya_entry = False
-            for entry_id in device_entry_ids:
-                if entry_id in enabled_entry_ids:
-                    has_enabled_tuya_entry = True
-                    break
-            
-            if not has_enabled_tuya_entry:
-                continue
-            
-            # Check if device has any active entities (not unsupported)
-            # Unsupported devices have no entities or all entities are disabled
-            device_entities = er.async_entries_for_device(
-                entity_registry, device_entry.id
-            )
-            
-            # Filter out disabled entities and check if any active entities remain
-            active_entities = [
-                entity for entity in device_entities
-                if entity.disabled_by is None
-            ]
-            
-            # Skip devices with no active entities (unsupported devices)
-            if not active_entities:
-                continue
-            
-            # Only check devices that have Tuya domain identifiers
-            # This ensures we only match actual Tuya devices, not devices with similar names
-            for identifier in device_entry.identifiers:
-                if isinstance(identifier, tuple) and len(identifier) >= 2:
-                    domain = identifier[0]
-                    device_id = identifier[1]
-                    
-                    # Only add device IDs from Tuya integrations
-                    # Don't match by name to avoid false positives with non-Tuya devices
-                    if domain in tuya_domains:
-                        existing_ids.add(str(device_id))
-                        existing_ids.add(str(device_id).lower())
-        
-        return existing_ids
-
     async def async_step_select_devices(
         self, user_input: Optional[Dict[str, Any]] = None
     ) -> FlowResult:
@@ -320,7 +327,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     return await self.async_step_update_interval()
         
         # Get device IDs already added via other Tuya integrations
-        existing_device_ids = self._get_existing_tuya_device_ids()
+        existing_device_ids = _get_existing_tuya_device_ids(self.hass)
         
         # Separate devices into already-added and not-added
         unadded_devices = []
@@ -467,10 +474,149 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 class OptionsFlowHandler(config_entries.OptionsFlow):
     """Handle options flow for Tuya Unsupported Sensors."""
 
+    def __init__(self) -> None:
+        """Initialize options flow."""
+        self._discovered_devices: Optional[list] = None
+
     async def async_step_init(
         self, user_input: Optional[Dict[str, Any]] = None
     ) -> FlowResult:
-        """Manage the options."""
+        """Manage the options - show menu."""
+        if user_input is not None:
+            next_step = user_input.get("next_step")
+            if next_step == "devices":
+                return await self.async_step_discover_devices()
+            elif next_step == "interval":
+                return await self.async_step_update_interval()
+        
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema(
+                {
+                    vol.Required("next_step", default="devices"): vol.In({
+                        "devices": "Update Devices",
+                        "interval": "Update Interval",
+                    }),
+                }
+            ),
+        )
+
+    async def async_step_discover_devices(
+        self, user_input: Optional[Dict[str, Any]] = None
+    ) -> FlowResult:
+        """Handle device discovery step."""
+        if user_input is None:
+            try:
+                client_id = self.config_entry.data[CONF_CLIENT_ID]
+                client_secret = self.config_entry.data[CONF_CLIENT_SECRET]
+                region = self.config_entry.data[CONF_REGION]
+                
+                client = TuyaAPIClient(
+                    client_id,
+                    client_secret,
+                    region,
+                )
+                self._discovered_devices = await client.discover_devices()
+                
+                if not self._discovered_devices:
+                    return self.async_abort(reason="no_devices")
+                
+            except Exception as err:
+                _LOGGER.exception("Error discovering devices: %s", err)
+                return self.async_abort(reason="discovery_failed")
+        
+        return await self.async_step_select_devices()
+
+    async def async_step_select_devices(
+        self, user_input: Optional[Dict[str, Any]] = None
+    ) -> FlowResult:
+        """Handle device selection step."""
+        errors: Dict[str, str] = {}
+        current_devices = self.config_entry.data.get(CONF_DEVICES, [])
+        
+        if user_input is not None:
+            selected_devices = user_input.get(CONF_DEVICES, [])
+            
+            if not selected_devices:
+                errors["base"] = "no_devices_selected"
+            else:
+                if len(selected_devices) > TRIAL_MAX_DEVICES:
+                    errors["base"] = f"Device count ({len(selected_devices)}) exceeds IOT CORE TRIAL PLAN limit of {TRIAL_MAX_DEVICES} devices"
+                else:
+                    # Update config entry with new device list
+                    new_data = {**self.config_entry.data}
+                    new_data[CONF_DEVICES] = selected_devices
+                    self.hass.config_entries.async_update_entry(
+                        self.config_entry, data=new_data
+                    )
+                    return self.async_create_entry(title="", data={})
+        
+        # Get device IDs already added via other Tuya integrations
+        existing_device_ids = _get_existing_tuya_device_ids(self.hass)
+        
+        # Separate devices into already-added and not-added
+        unadded_devices = []
+        added_devices = []
+        
+        for device in self._discovered_devices or []:
+            device_id = device.get("id", "")
+            device_name = device.get("customName") or device.get("name", "Unknown Device")
+            
+            # Check if device is already added by Tuya device ID only
+            # Don't match by name to avoid false positives with non-Tuya devices
+            is_added = (
+                device_id in existing_device_ids or
+                device_id.lower() in existing_device_ids
+            )
+            
+            device_info = {
+                "id": device_id,
+                "name": device_name,
+                "is_added": is_added,
+            }
+            
+            if is_added:
+                added_devices.append(device_info)
+            else:
+                unadded_devices.append(device_info)
+        
+        # Build device options: unadded first, then added (with indicators)
+        device_options = {}
+        
+        # Add unadded devices first (priority)
+        for device in unadded_devices:
+            device_options[device["id"]] = device["name"]
+        
+        # Add already-added devices with indicator
+        for device in added_devices:
+            device_options[device["id"]] = f"{device['name']} [Already added via another integration]"
+        
+        data_schema = vol.Schema(
+            {
+                vol.Required(
+                    CONF_DEVICES,
+                    default=current_devices,
+                ): cv.multi_select(device_options),
+            }
+        )
+        
+        info_text = "We recommend selecting only devices that aren't already added via other Tuya integrations."
+        if added_devices:
+            info_text += f" {len(unadded_devices)} device(s) not yet added, {len(added_devices)} already added."
+        
+        return self.async_show_form(
+            step_id="select_devices",
+            data_schema=data_schema,
+            errors=errors,
+            description_placeholders={
+                "info": info_text,
+            },
+        )
+
+    async def async_step_update_interval(
+        self, user_input: Optional[Dict[str, Any]] = None
+    ) -> FlowResult:
+        """Handle update interval step."""
         errors: Dict[str, str] = {}
         
         if user_input is not None:
@@ -517,7 +663,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             description = warning_msg
         
         return self.async_show_form(
-            step_id="init",
+            step_id="update_interval",
             data_schema=data_schema,
             errors=errors,
             description_placeholders={"info": description},
