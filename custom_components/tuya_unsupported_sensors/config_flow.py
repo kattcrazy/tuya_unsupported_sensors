@@ -483,7 +483,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
     ) -> FlowResult:
         """Manage the options - show menu."""
         if user_input is not None:
-            next_step = user_input.get("next_step")
+            next_step = user_input.get("Choose")
             if next_step == "devices":
                 return await self.async_step_discover_devices()
             elif next_step == "interval":
@@ -493,7 +493,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             step_id="init",
             data_schema=vol.Schema(
                 {
-                    vol.Required("next_step", default="devices"): vol.In({
+                    vol.Required("Choose", default="devices"): vol.In({
                         "devices": "Update Devices",
                         "interval": "Update Interval",
                     }),

@@ -7,6 +7,7 @@ An intergration that creates devices & entites for sensors otherwise unsupported
 - Humidity
 - Battery
 - Door/contact
+- PIR motion sensor
 
 ### Unsupported
 - Anything that requires control (e.g: lights) will not be added, this is for read-only sensors
