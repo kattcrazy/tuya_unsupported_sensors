@@ -41,7 +41,7 @@ Follow [this guide](https://github.com/azerty9971/xtend_tuya/blob/v4.2.4/docs/cl
 
 **Sensors updating too slowly or rate limit errors:** Please calculate your minimum update interval using the following equation to avoid rate limiting or running out of api calls. 99.69 x Number of Devices = Minimum update interval 
 
-**Discovery_failed error** Download and run Datacenter_test.py. It will ask for your Tuya API details and then return the results of each different datacenter. The working datacenter is the one that your Tuya API Project needs to use. If it's not using that, please remake your Tuya cloud project following these steps up until step 5 https://github.com/azerty9971/xtend_tuya/blob/v4.2.4/docs/cloud_credentials.md  (credit [@azerty9971](https://github.com/azerty9971)). 
+**Discovery_failed error** Download and run [Datacenter_test.py](https://github.com/kattcrazy/tuya_unsupported_sensors/blob/main/Datacenter_test.py). It will ask for your Tuya API details and then return the results of each different datacenter. The working datacenter is the one that your Tuya API Project needs to use. If it's not using that, please remake your Tuya cloud project following these steps up until step 5 https://github.com/azerty9971/xtend_tuya/blob/v4.2.4/docs/cloud_credentials.md  (credit [@azerty9971](https://github.com/azerty9971)). 
 
 
 ## About
