@@ -546,7 +546,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     # Update config entry with new device list
                     new_data = {**self.config_entry.data}
                     new_data[CONF_DEVICES] = selected_devices
-                    self.hass.config_entries.async_update_entry(
+                    await self.hass.config_entries.async_update_entry(
                         self.config_entry, data=new_data
                     )
                     return self.async_create_entry(title="", data={})
@@ -634,7 +634,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                         else:
                             new_data = {**self.config_entry.data}
                             new_data[CONF_UPDATE_INTERVAL] = update_interval
-                            self.hass.config_entries.async_update_entry(
+                            await self.hass.config_entries.async_update_entry(
                                 self.config_entry, data=new_data
                             )
                             return self.async_create_entry(title="", data={})
