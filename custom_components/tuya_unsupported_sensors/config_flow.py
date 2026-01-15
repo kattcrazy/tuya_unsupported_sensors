@@ -543,13 +543,22 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 if len(selected_devices) > TRIAL_MAX_DEVICES:
                     errors["base"] = f"Device count ({len(selected_devices)}) exceeds IOT CORE TRIAL PLAN limit of {TRIAL_MAX_DEVICES} devices"
                 else:
-                    # Update config entry with new device list
-                    new_data = {**self.config_entry.data}
-                    new_data[CONF_DEVICES] = selected_devices
-                    await self.hass.config_entries.async_update_entry(
-                        self.config_entry, data=new_data
-                    )
-                    return self.async_create_entry(title="", data={})
+                    # Ensure selected_devices is a list
+                    if not isinstance(selected_devices, list):
+                        selected_devices = list(selected_devices) if selected_devices else []
+                    
+                    # Get fresh config entry reference
+                    entry = self.hass.config_entries.async_get_entry(self.config_entry.entry_id)
+                    if entry is None:
+                        errors["base"] = "config_entry_not_found"
+                    else:
+                        # Create new data dict with all required fields
+                        new_data = dict(entry.data)
+                        new_data[CONF_DEVICES] = selected_devices
+                        
+                        # Update config entry
+                        await self.hass.config_entries.async_update_entry(entry, data=new_data)
+                        return self.async_create_entry(title="", data={})
         
         # Get device IDs already added via other Tuya integrations
         existing_device_ids = _get_existing_tuya_device_ids(self.hass)
@@ -632,12 +641,18 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                         if exceeds_limits:
                             errors[CONF_UPDATE_INTERVAL] = warning_msg
                         else:
-                            new_data = {**self.config_entry.data}
-                            new_data[CONF_UPDATE_INTERVAL] = update_interval
-                            await self.hass.config_entries.async_update_entry(
-                                self.config_entry, data=new_data
-                            )
-                            return self.async_create_entry(title="", data={})
+                            # Get fresh config entry reference
+                            entry = self.hass.config_entries.async_get_entry(self.config_entry.entry_id)
+                            if entry is None:
+                                errors[CONF_UPDATE_INTERVAL] = "config_entry_not_found"
+                            else:
+                                # Create new data dict with all required fields
+                                new_data = dict(entry.data)
+                                new_data[CONF_UPDATE_INTERVAL] = update_interval
+                                
+                                # Update config entry
+                                await self.hass.config_entries.async_update_entry(entry, data=new_data)
+                                return self.async_create_entry(title="", data={})
                 except (ValueError, TypeError):
                     errors[CONF_UPDATE_INTERVAL] = "Must be a valid number"
         
