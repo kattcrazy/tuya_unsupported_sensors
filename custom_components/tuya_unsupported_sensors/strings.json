@@ -7,7 +7,7 @@
       },
       "credentials": {
         "title": "Enter Credentials",
-        "description": "Enter your Tuya Cloud API credentials. Follow the Xtend Tuya cloud credential guide up to step 5: https://github.com/azerty9971/xtend_tuya/blob/v4.2.4/docs/cloud_credentials.md"
+        "description": "Enter your Tuya Cloud API credentials. Details in intergration readme"
       },
       "discover_devices": {
         "title": "Discovering Devices",
