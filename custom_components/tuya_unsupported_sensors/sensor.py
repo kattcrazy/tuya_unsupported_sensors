@@ -76,16 +76,16 @@ def _get_unit_of_measurement(property_code: str, value: Any, device_data: Option
     Args:
         property_code: The property code (e.g., "temp_current")
         value: The property value
-        device_data: Optional device data dict to check for temp_unit_convert
+        device_data: Optional device data dict (unused for temperature; Tuya API always reports in Celsius).
     """
     device_class = _get_sensor_device_class(property_code)
     
     if device_class == SensorDeviceClass.TEMPERATURE:
-        # Check if device has temp_unit_convert property
-        if device_data:
-            unit_convert = device_data.get("temp_unit_convert", "c")
-            if unit_convert and unit_convert.lower() == "f":
-                return "°F"
+        # Tuya Cloud API always returns temperature in Celsius regardless of the
+        # "Unit Convert" setting in the Smart Life / Tuya app (that setting only
+        # affects display in the app). Reporting °C here avoids showing Celsius
+        # values with an °F label (e.g. 21.9°C displayed as "21.9°F"). Home
+        # Assistant will convert to the user's preferred unit for display.
         return "°C"
     if device_class == SensorDeviceClass.HUMIDITY:
         return "%"
