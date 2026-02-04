@@ -42,7 +42,11 @@ Follow [this guide](https://github.com/azerty9971/xtend_tuya/blob/v4.2.4/docs/cl
 
 **Sensors updating too slowly or rate limit errors:** Please calculate your minimum update interval using the following equation to avoid rate limiting or running out of api calls. 99.69 x Number of Devices = Minimum update interval 
 
-**Discovery_failed error** Download and run [Datacenter_test.py](https://github.com/kattcrazy/tuya_unsupported_sensors/blob/main/Datacenter_test.py). It will ask for your Tuya API details and then return the results of each different datacenter. The working datacenter is the one that your Tuya API Project needs to use. If it's not using that, please remake your Tuya cloud project following these steps up until step 5 https://github.com/azerty9971/xtend_tuya/blob/v4.2.4/docs/cloud_credentials.md  (credit [@azerty9971](https://github.com/azerty9971)). 
+**Discovery_failed error** There are two possible causes. One, you are using the wrong datacenter. Two, your Iot Core free trial has expired and you need to extend it. To check, do the following.
+1. Download and run [Datacenter_test.py](https://github.com/kattcrazy/tuya_unsupported_sensors/blob/main/Datacenter_test.py). It will ask for your Tuya API details and then return the results of each different datacenter.
+2. If there is a working datacenter, that's the one that your Tuya API Project needs to use. If your API project not using that, please remake your Tuya cloud project following these steps up until step 5 https://github.com/azerty9971/xtend_tuya/blob/v4.2.4/docs/cloud_credentials.md  (credit [@azerty9971](https://github.com/azerty9971)).
+3. If all the datacenters fail, look for one that says "No permissions. Your subscription to cloud development plan has expired". To renew your Tuya IoT Core (which is what you need for this), go to https://www.tuya.com/vas/commodity/IOT_CORE_V2 and click "Buy now". It'll take you to a page where there should be a button to apply for a extension. I use the following details or similar when applying, and so far I haven't been denied.
+<img width="506" height="257" alt="Image" src="https://github.com/user-attachments/assets/237517d8-7ff2-4e69-bdf3-70a3c7fe6195" />
 
 
 ## About
