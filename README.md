@@ -11,7 +11,7 @@ An intergration that creates devices & entites for sensors otherwise unsupported
 
 ### Unsupported
 - Anything that requires control (e.g: lights) will not be added, this is for read-only sensors
-- If you have a read-only sensor you'd like to see you can submit an feature  request in the issues tab
+- If you have a read-only sensor you'd like to have added, you can submit an feature request in the issues tab with the following debugging response. To get the debugging response, go to https://us.platform.tuya.com/cloud/explorer > device control > Query properties and input your device's ID (found https://platform.tuya.com/ > cloud > project management > open project > devices ).
 
 
 ## Installation (HACS) 
