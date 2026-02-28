@@ -284,6 +284,21 @@ class ExtraTuyaSensor(CoordinatorEntity, SensorEntity):
                     e
                 )
             
+            # Convert Celsius to Fahrenheit for temperature sensors when temp_unit_convert is "f"
+            # The Tuya API always returns temperature in Celsius regardless of the unit setting
+            device_class = _get_sensor_device_class(self._property_code)
+            if device_class == SensorDeviceClass.TEMPERATURE:
+                unit_convert = device_data.get("temp_unit_convert", "c")
+                if unit_convert and str(unit_convert).lower() == "f":
+                    celsius_value = num_value
+                    num_value = (celsius_value * 9 / 5) + 32
+                    _LOGGER.debug(
+                        "Converted temperature from Celsius to Fahrenheit for %s: %.2f°C -> %.2f°F",
+                        self._property_code,
+                        celsius_value,
+                        num_value
+                    )
+            
             return num_value
         
         # For battery text values, log what we're getting
