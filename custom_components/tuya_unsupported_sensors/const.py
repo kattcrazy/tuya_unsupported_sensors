@@ -45,16 +45,32 @@ SENSOR_PROPERTY_CODES = {
     "humidity": ["humidity", "va_humidity", "humidity_value"],
     "battery": ["battery", "battery_percentage", "battery_state"],
     "battery_value": ["battery_value"],
+    "illuminance": ["illuminance_value", "illuminance", "illumination"],
+    "alarm": ["temp_alarm", "hum_alarm"],
+}
+
+# Config/setting properties that use temp unit (maxtemp_set etc.) - need temp_unit_convert
+TEMP_UNIT_PROPERTIES = [
+    "maxtemp_set", "minitemp_set", "temp_sensitivity",
+]
+# Config properties with fixed units
+PROPERTY_UNIT_MAP = {
+    "maxhum_set": "%",
+    "minihum_set": "%",
+    "hum_sensitivity": "%",
+    "temp_periodic_report": "min",
+    "hum_periodic_report": "min",
 }
 
 BINARY_SENSOR_PROPERTY_CODES = {
     "contact": ["contact", "doorcontact_state", "door_sensor_state"],
     "motion": ["motion", "pir", "pir_state"],
+    "occupancy": ["presence_state", "presence"],
     "online": ["online"],
 }
 
 BINARY_SENSOR_VALUE_MAP = {
-    "on": ["true", "1", "open", "pir"],
-    "off": ["false", "0", "close", "none"],
+    "on": ["true", "1", "open", "pir", "presence"],
+    "off": ["false", "0", "close", "none", "absence"],
 }
 

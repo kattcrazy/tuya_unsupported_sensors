@@ -81,6 +81,8 @@ def _get_binary_sensor_device_class(property_code: str) -> Optional[str]:
                 return BinarySensorDeviceClass.DOOR
             if device_class == "motion":
                 return BinarySensorDeviceClass.MOTION
+            if device_class == "occupancy":
+                return BinarySensorDeviceClass.OCCUPANCY
             if device_class == "online":
                 return BinarySensorDeviceClass.CONNECTIVITY
     return None
@@ -95,6 +97,8 @@ def _get_friendly_name(property_code: str) -> str:
         "pir": "Motion",
         "pir_state": "Motion",
         "motion": "Motion",
+        "presence_state": "Occupancy",
+        "presence": "Occupancy",
         "online": "Online",
     }
     

@@ -18,7 +18,9 @@ from homeassistant.util import slugify
 from .const import (
     CONF_DEVICES,
     DOMAIN,
+    PROPERTY_UNIT_MAP,
     SENSOR_PROPERTY_CODES,
+    TEMP_UNIT_PROPERTIES,
 )
 from .coordinator import ExtraTuyaSensorsDataUpdateCoordinator
 
@@ -42,6 +44,27 @@ def _get_friendly_name(property_code: str) -> str:
         "humidity": "Humidity",
         "battery": "Battery",
         "battery_percentage": "Battery",
+        "illuminance_value": "Illuminance",
+        "illuminance": "Illuminance",
+        "presence_delay": "Presence Delay",
+        "movesensitivity": "Move Sensitivity",
+        "breathsensitivity": "Breath Sensitivity",
+        "movedistance_max": "Move Distance Max",
+        "movedistance_min": "Move Distance Min",
+        "breathdistance_max": "Breath Distance Max",
+        "breathdistance_min": "Breath Distance Min",
+        "va_temperature": "Temperature",
+        "va_humidity": "Humidity",
+        "temp_alarm": "Temperature Alarm",
+        "hum_alarm": "Humidity Alarm",
+        "maxtemp_set": "Max Temp Setpoint",
+        "minitemp_set": "Min Temp Setpoint",
+        "maxhum_set": "Max Humidity Setpoint",
+        "minihum_set": "Min Humidity Setpoint",
+        "temp_periodic_report": "Temp Report Interval",
+        "hum_periodic_report": "Humidity Report Interval",
+        "temp_sensitivity": "Temp Sensitivity",
+        "hum_sensitivity": "Humidity Sensitivity",
     }
     
     # Check exact match first
@@ -67,6 +90,8 @@ def _get_sensor_device_class(property_code: str) -> Optional[str]:
                 return SensorDeviceClass.HUMIDITY
             if device_class in ("battery", "battery_value"):
                 return SensorDeviceClass.BATTERY
+            if device_class == "illuminance":
+                return SensorDeviceClass.ILLUMINANCE
     return None
 
 
@@ -94,11 +119,23 @@ def _get_unit_of_measurement(property_code: str, value: Any, device_data: Option
         return "°C"
     if device_class == SensorDeviceClass.HUMIDITY:
         return "%"
+    if device_class == SensorDeviceClass.ILLUMINANCE:
+        return "lx"
     if device_class == SensorDeviceClass.BATTERY:
         if _is_numeric_value(value):
             return "%"
         return None
-    
+
+    # Config properties with temperature-like units (use temp_unit_convert)
+    if property_code.lower() in TEMP_UNIT_PROPERTIES and device_data:
+        unit_convert = device_data.get("temp_unit_convert", "c")
+        if unit_convert and str(unit_convert).lower() == "f":
+            return "°F"
+        return "°C"
+    # Config properties with fixed units
+    if property_code.lower() in PROPERTY_UNIT_MAP:
+        return PROPERTY_UNIT_MAP[property_code.lower()]
+
     return None
 
 
@@ -284,10 +321,11 @@ class ExtraTuyaSensor(CoordinatorEntity, SensorEntity):
                     e
                 )
             
-            # Convert Celsius to Fahrenheit for temperature sensors when temp_unit_convert is "f"
+            # Convert Celsius to Fahrenheit for temperature sensors and temp config props when temp_unit_convert is "f"
             # The Tuya API always returns temperature in Celsius regardless of the unit setting
             device_class = _get_sensor_device_class(self._property_code)
-            if device_class == SensorDeviceClass.TEMPERATURE:
+            is_temp_config = self._property_code.lower() in TEMP_UNIT_PROPERTIES
+            if device_class == SensorDeviceClass.TEMPERATURE or is_temp_config:
                 unit_convert = device_data.get("temp_unit_convert", "c")
                 if unit_convert and str(unit_convert).lower() == "f":
                     celsius_value = num_value
