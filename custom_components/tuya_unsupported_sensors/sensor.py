@@ -46,6 +46,32 @@ def _get_friendly_name(property_code: str) -> str:
         "battery_percentage": "Battery",
         "illuminance_value": "Illuminance",
         "illuminance": "Illuminance",
+        # Electric meter (ZX-7500 and similar)
+        "voltagea": "Voltage A",
+        "voltageb": "Voltage B",
+        "voltagec": "Voltage C",
+        "currenta": "Current A",
+        "currentb": "Current B",
+        "currentc": "Current C",
+        "current": "Current Total",
+        "activepowera": "Active Power A",
+        "activepowerb": "Active Power B",
+        "activepowerc": "Active Power C",
+        "activepower": "Active Power Total",
+        "reactivepowera": "Reactive Power A",
+        "reactivepowerb": "Reactive Power B",
+        "reactivepowerc": "Reactive Power C",
+        "reactivepower": "Reactive Power Total",
+        "powerfactora": "Power Factor A",
+        "powerfactorb": "Power Factor B",
+        "powerfactorc": "Power Factor C",
+        "energyconsumeda": "Energy Consumed A",
+        "energyconsumedb": "Energy Consumed B",
+        "energyconsumedc": "Energy Consumed C",
+        "energyconsumed": "Energy Consumed Total",
+        "frequency": "Frequency",
+        "devicestatus": "Device Status",
+        "voltage_phase_seq": "Voltage Phase Sequence",
         "presence_delay": "Presence Delay",
         "movesensitivity": "Move Sensitivity",
         "breathsensitivity": "Breath Sensitivity",
@@ -92,6 +118,16 @@ def _get_sensor_device_class(property_code: str) -> Optional[str]:
                 return SensorDeviceClass.BATTERY
             if device_class == "illuminance":
                 return SensorDeviceClass.ILLUMINANCE
+            if device_class == "voltage":
+                return SensorDeviceClass.VOLTAGE
+            if device_class == "current":
+                return SensorDeviceClass.CURRENT
+            if device_class == "power":
+                return SensorDeviceClass.POWER
+            if device_class == "energy":
+                return SensorDeviceClass.ENERGY
+            if device_class == "frequency":
+                return SensorDeviceClass.FREQUENCY
     return None
 
 
@@ -125,6 +161,16 @@ def _get_unit_of_measurement(property_code: str, value: Any, device_data: Option
         if _is_numeric_value(value):
             return "%"
         return None
+    if device_class == SensorDeviceClass.VOLTAGE:
+        return "V"
+    if device_class == SensorDeviceClass.CURRENT:
+        return "A"
+    if device_class == SensorDeviceClass.POWER:
+        return "W"
+    if device_class == SensorDeviceClass.ENERGY:
+        return "kWh"
+    if device_class == SensorDeviceClass.FREQUENCY:
+        return "Hz"
 
     # Config properties with temperature-like units (use temp_unit_convert)
     if property_code.lower() in TEMP_UNIT_PROPERTIES and device_data:
@@ -362,7 +408,11 @@ class ExtraTuyaSensor(CoordinatorEntity, SensorEntity):
         if not _is_numeric_value(value):
             return None
         
-        # All numeric sensors should have state_class
+        # Energy sensors use TOTAL_INCREASING (for Energy dashboard)
+        device_class = _get_sensor_device_class(self._property_code)
+        if device_class == SensorDeviceClass.ENERGY:
+            return SensorStateClass.TOTAL_INCREASING
+        
         return SensorStateClass.MEASUREMENT
 
     @property

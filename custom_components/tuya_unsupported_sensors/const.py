@@ -47,6 +47,20 @@ SENSOR_PROPERTY_CODES = {
     "battery_value": ["battery_value"],
     "illuminance": ["illuminance_value", "illuminance", "illumination"],
     "alarm": ["temp_alarm", "hum_alarm"],
+    # Electric meter (ZX-7500 and similar)
+    "voltage": ["voltagea", "voltageb", "voltagec"],
+    "current": ["currenta", "currentb", "currentc", "current"],
+    "power": ["activepowera", "activepowerb", "activepowerc", "activepower"],
+    "energy": [
+        "energyconsumeda", "energyconsumedb", "energyconsumedc", "energyconsumed"
+    ],
+    "frequency": ["frequency"],
+    "reactive_power": [
+        "reactivepowera", "reactivepowerb", "reactivepowerc", "reactivepower"
+    ],
+    "power_factor": ["powerfactora", "powerfactorb", "powerfactorc"],
+    "device_status": ["devicestatus"],
+    "voltage_phase_seq": ["voltage_phase_seq"],
 }
 
 # Config/setting properties that use temp unit (maxtemp_set etc.) - need temp_unit_convert
@@ -60,6 +74,30 @@ PROPERTY_UNIT_MAP = {
     "hum_sensitivity": "%",
     "temp_periodic_report": "min",
     "hum_periodic_report": "min",
+    # Electric meter
+    "voltagea": "V",
+    "voltageb": "V",
+    "voltagec": "V",
+    "currenta": "A",
+    "currentb": "A",
+    "currentc": "A",
+    "current": "A",
+    "activepowera": "W",
+    "activepowerb": "W",
+    "activepowerc": "W",
+    "activepower": "W",
+    "reactivepowera": "var",
+    "reactivepowerb": "var",
+    "reactivepowerc": "var",
+    "reactivepower": "var",
+    "powerfactora": "",
+    "powerfactorb": "",
+    "powerfactorc": "",
+    "energyconsumeda": "kWh",
+    "energyconsumedb": "kWh",
+    "energyconsumedc": "kWh",
+    "energyconsumed": "kWh",
+    "frequency": "Hz",
 }
 
 BINARY_SENSOR_PROPERTY_CODES = {
