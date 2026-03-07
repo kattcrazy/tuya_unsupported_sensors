@@ -18,7 +18,7 @@ An intergration that creates devices & entites for sensors otherwise unsupported
 ### Unsupported
 Anything that requires control (e.g: lights) will not be added, this is for read-only sensors as manging controls far exceeds my skill level!
 
-## Request a new sensor/entity
+### Request a new sensor/entity
 If you have a read-only sensor you'd like to have added, you can submit an feature request in the issues tab with the following debugging response. If you don't include this, I will simply refer you back to this documentation.
 1. Go to https://platform.tuya.com/ > cloud > project management > open project > devices
 2. Find your device and write/copy its ID
@@ -27,7 +27,7 @@ If you have a read-only sensor you'd like to have added, you can submit an featu
 
 ## Installation 
 ### HACS (Reccomended)
-<a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=kattcrazy&category=intergration&repository=tuya_unsupported_sensors" target="_blank" rel="noreferrer noopener"><img src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Open your Home Assistant instance and open a repository inside the Home Assistant Community Store." /></a>
+1. <a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=kattcrazy&category=intergration&repository=tuya_unsupported_sensors" target="_blank" rel="noreferrer noopener"><img src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Open your Home Assistant instance and open a repository inside the Home Assistant Community Store." /></a>
 2. Press download, then restart Home Assistant
 3. Go to `Settings > Devices & Integrations > Add Integration` and search for Tuya Unsupported Sensors
 4. Select it and fill in the required details (see [Tuya Dev API](https://github.com/kattcrazy/tuya_unsupported_sensors#tuya-developer-api) below)
