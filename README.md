@@ -1,6 +1,10 @@
 # Tuya Unsupported Sensors
 
-An intergration that creates devices & entites for sensors otherwise unsupported by the main tuya/smart life intergration.
+An intergration that creates devices & entites for sensors otherwise unsupported by the main tuya/smart life intergration. Unlike Tuya Local and Local Tuya, this uses the cloud-based API.
+
+| Core Tuya | Tuya Unsupported Sensors |
+|-----------|--------------------------|
+| ![Unsupported](images/Unsupported.png) | ![Supported](images/Supported.png) |
 
 ### Supported sensors/entities 
 - Temperature
@@ -9,45 +13,70 @@ An intergration that creates devices & entites for sensors otherwise unsupported
 - Door/contact
 - PIR motion
 - Presence
+- Electric meter
 
 ### Unsupported
-- Anything that requires control (e.g: lights) will not be added, this is for read-only sensors
-- If you have a read-only sensor you'd like to have added, you can submit an feature request in the issues tab with the following debugging response. To get the debugging response, go to https://us.platform.tuya.com/cloud/explorer > device control > Query properties and input your device's ID (found https://platform.tuya.com/ > cloud > project management > open project > devices ).
+- Anything that requires control (e.g: lights) will not be added, this is for read-only sensors as manging controls far exceeds my skill level!
 
+### Request a new sensor/entity
+If you have a read-only sensor you'd like to have added, you can submit an feature request in the issues tab with the following debugging response. If you don't include this, I will simply refer you back to this documentation.
+1. Go to https://platform.tuya.com/ > cloud > project management > open project > devices
+2. Find your device and write/copy its ID
+3. Go to https://us.platform.tuya.com/cloud/explorer > device control > Query properties
+4. Input your device's ID and submit
 
 ## Installation (HACS) 
-1. <a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=kattcrazy&category=intergration&repository=tuya_unsupported_sensors" target="_blank" rel="noreferrer noopener"><img src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Open your Home Assistant instance and open a repository inside the Home Assistant Community Store." /></a>
-2. Press download and restart Home Assistant.
-3. Go to `Settings > Devices & Integrations > Add Integration` and search for Tuya Unsupported Sensors.
-4. Fill in the required details (see Tuya Dev API below) and choose a refresh interval.
-5. Select your usually unsupported sensors from the list.
+<a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=kattcrazy&category=intergration&repository=tuya_unsupported_sensors" target="_blank" rel="noreferrer noopener"><img src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Open your Home Assistant instance and open a repository inside the Home Assistant Community Store." /></a>
+2. Press download, then restart Home Assistant
+3. Go to `Settings > Devices & Integrations > Add Integration` and search for Tuya Unsupported Sensors
+4. Select it and fill in the required details (see [Tuya Dev API](https://github.com/kattcrazy/tuya_unsupported_sensors#tuya-developer-api) below)
+5. Choose a refresh interval using the formula `99.69 x Number of Devices = Minimum update interval`
+5. Select your usually unsupported sensors from the list
 
 ## Installation (manual)
 1. Download the folder named `tuya_unsupported_sensors` inside `custom_components`
-2. Drag/upload it into your `custom_components` folder inside your Home Assistant configuration folder (for Home Assistant Docker, `custom_components` is inside the folder that holds your `configuration.yaml`).
-3. Go to `Settings > Devices & Integrations > Add Integration` and search for Tuya Unsupported Sensors.
-4. Fill in the required details (see Tuya Dev API below) and choose a refresh interval.
-5. Select your usually unsupported sensors from the list.
+2. Drag/upload it into your `custom_components` folder inside your Home Assistant folder (for Home Assistant Docker, `custom_components` is in the folder that holds your `configuration.yaml`), and restart Home Assistant
+3. Go to `Settings > Devices & Integrations > Add Integration` and search for Tuya Unsupported Sensors
+4. Select it and fill in the required details (see [Tuya Dev API](https://github.com/kattcrazy/tuya_unsupported_sensors#tuya-developer-api) below)
+5. Choose a refresh interval using the formula `99.69 x Number of Devices = Minimum update interval`
+5. Select your usually unsupported sensors from the list
 
-## Tuya Dev API
-Follow [this guide](https://github.com/azerty9971/xtend_tuya/blob/v4.2.4/docs/cloud_credentials.md) until step 5 to see how to set up the API credentials (credit [@azerty9971](https://github.com/azerty9971)).
+## Tuya Developer API
+Follow [this guide](https://github.com/azerty9971/xtend_tuya/blob/v4.2.4/docs/cloud_credentials.md) until step 5 to see how to set up the API credentials
+> Thanks to [@azerty9971](https://github.com/azerty9971) for the thorough guide
 
 ## Troubleshooting
-**Trouble finding devices/incorrect API key:** Has your API key expired? Have you followed the steps above?
 
-**Trouble finding devices:** Do you have devices to add? Have you followed the steps above?
+### Trouble finding devices/incorrect API key
 
-**No entities in a device/unsupported:** Check the list of supported sensors. If a sensor in the list doesn't work, go to https://us.platform.tuya.com/cloud/explorer > device control > Query properties and input your device's ID there (found https://platform.tuya.com/ > cloud > project management > open project > devices ) and paste the debugging response into a issue so I can add it.
+- Has your API key expired?
+- Have you followed the steps above?
 
-**Error 1010 (Token Invalid):** Tuya API access tokens expire after approximately 2 hours, and the integration automatically refreshes tokens when this happens. If the issue persists, verify your API credentials are correct and create an issue containing your logs.
+### Trouble finding devices
 
-**Sensors updating too slowly or rate limit errors:** Please calculate your minimum update interval using the following equation to avoid rate limiting or running out of api calls. 99.69 x Number of Devices = Minimum update interval 
+- Do you have devices in your Smart Life/Tuya app/account?
+- Have you followed the steps above?
 
-**Discovery_failed error** There are two possible causes. One, you are using the wrong datacenter. Two, your Iot Core free trial has expired and you need to extend it. To check, do the following.
+### No entities in a device/unsupported/missing data
+
+Refer to [the guide](https://github.com/kattcrazy/tuya_unsupported_sensors#request-a-new-sensor-entity) on how to find the debugging response. Create an issue with that response and I will add the mappings for your entities. 
+
+### Error 1010 (Token Invalid)
+
+Tuya API access tokens expire after approximately 2 hours, and the integration automatically refreshes tokens when this happens. If the issue persists, verify your API credentials are correct and create an issue containing your logs.
+
+### Sensors updating too slowly or rate limit errors
+
+Please calculate your minimum update interval using the following equation to avoid rate limiting or running out of api calls. ` 99.69 x Number of Devices = Minimum update interval `
+
+### Discovery_failed error
+
+There are two possible causes. One, you are using the wrong datacenter. Two, your Iot Core free trial has expired and you need to extend it. To check, do the following.
+
 1. Download and run [Datacenter_test.py](https://github.com/kattcrazy/tuya_unsupported_sensors/blob/main/Datacenter_test.py). It will ask for your Tuya API details and then return the results of each different datacenter.
 2. If there is a working datacenter, that's the one that your Tuya API Project needs to use. If your API project not using that, please remake your Tuya cloud project following these steps up until step 5 https://github.com/azerty9971/xtend_tuya/blob/v4.2.4/docs/cloud_credentials.md  (credit [@azerty9971](https://github.com/azerty9971)).
 3. If all the datacenters fail, look for one that says "No permissions. Your subscription to cloud development plan has expired". To renew your Tuya IoT Core (which is what you need for this), go to https://www.tuya.com/vas/commodity/IOT_CORE_V2 and click "Buy now". It'll take you to a page where there should be a button to apply for a extension. I use the following details or similar when applying, and so far I haven't been denied.
-<img width="506" height="257" alt="Image" src="https://github.com/user-attachments/assets/237517d8-7ff2-4e69-bdf3-70a3c7fe6195" />
+![extension_details](https://github.com/user-attachments/assets/237517d8-7ff2-4e69-bdf3-70a3c7fe6195)
 
 
 ## About
