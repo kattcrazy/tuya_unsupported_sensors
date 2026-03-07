@@ -6,7 +6,7 @@ An intergration that creates devices & entites for sensors otherwise unsupported
 |-----------|--------------------------|
 | ![Unsupported](images/Unsupported.png) | ![Supported](images/Supported.png) |
 
-## Supported sensors/entities 
+### Supported sensors/entities 
 - Temperature
 - Humidity
 - Battery
@@ -15,8 +15,8 @@ An intergration that creates devices & entites for sensors otherwise unsupported
 - Presence
 - Electric meter
 
-## Unsupported
-- Anything that requires control (e.g: lights) will not be added, this is for read-only sensors as manging controls far exceeds my skill level!
+### Unsupported
+Anything that requires control (e.g: lights) will not be added, this is for read-only sensors as manging controls far exceeds my skill level!
 
 ## Request a new sensor/entity
 If you have a read-only sensor you'd like to have added, you can submit an feature request in the issues tab with the following debugging response. If you don't include this, I will simply refer you back to this documentation.
@@ -26,7 +26,7 @@ If you have a read-only sensor you'd like to have added, you can submit an featu
 4. Input your device's ID and submit
 
 ## Installation 
-## HACS (Reccomended)
+### HACS (Reccomended)
 <a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=kattcrazy&category=intergration&repository=tuya_unsupported_sensors" target="_blank" rel="noreferrer noopener"><img src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Open your Home Assistant instance and open a repository inside the Home Assistant Community Store." /></a>
 2. Press download, then restart Home Assistant
 3. Go to `Settings > Devices & Integrations > Add Integration` and search for Tuya Unsupported Sensors
@@ -75,8 +75,9 @@ Please calculate your minimum update interval using the following equation to av
 There are two possible causes. One, you are using the wrong datacenter. Two, your Iot Core free trial has expired and you need to extend it. To check, do the following.
 
 1. Download and run [Datacenter_test.py](https://github.com/kattcrazy/tuya_unsupported_sensors/blob/main/Datacenter_test.py). It will ask for your Tuya API details and then return the results of each different datacenter.
-2. If there is a working datacenter, that's the one that your Tuya API Project needs to use. If your API project not using that, please remake your Tuya cloud project following [these](https://github.com/kattcrazy/tuya_unsupported_sensors?tab=readme-ov-file#tuya-developer-api steps.
+2. If there is a working datacenter, that's the one that your Tuya API Project needs to use. If your API project not using that, please remake your Tuya cloud project following [these](https://github.com/kattcrazy/tuya_unsupported_sensors?tab=readme-ov-file#tuya-developer-api) steps.
 3. If all the datacenters fail, look for one that says "No permissions. Your subscription to cloud development plan has expired". To renew your Tuya IoT Core (which is what you need for this), go to https://www.tuya.com/vas/commodity/IOT_CORE_V2 and click "Buy now". It'll take you to a page where there should be a button to apply for a extension. I use the following details or similar when applying, and so far I haven't been denied.
+
 ![extension_details](https://github.com/user-attachments/assets/237517d8-7ff2-4e69-bdf3-70a3c7fe6195)
 
 
