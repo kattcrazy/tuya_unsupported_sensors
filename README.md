@@ -22,7 +22,7 @@ Anything that requires control (e.g: lights) will not be added, this is for read
 If you have a read-only sensor you'd like to have added, you can submit an feature request in the issues tab with the following debugging response. If you don't include this, I will simply refer you back to this documentation.
 1. Go to https://platform.tuya.com/ > cloud > project management > open project > devices
 2. Find your device and write/copy its ID
-3. Go to https://us.platform.tuya.com/cloud/explorer > device control > Query properties
+3. Go to https://platform.tuya.com/cloud/explorer > device control > Query properties
 4. Input your device's ID and submit
 
 ## Installation 
