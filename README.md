@@ -14,10 +14,10 @@ An intergration that creates devices & entites for sensors otherwise unsupported
 - PIR motion
 - Presence
 - Electric meter
-- Smart lock telemetry (battery, alarm status, beep volume, unlock counters)
+- Smart lock
 
 ### Unsupported
-Anything that requires control (e.g: lights) will not be added, this is for read-only sensors as manging controls far exceeds my skill level!
+Anything that requires control (e.g: lights) will not be added, this is for read-only sensors as manging controls far exceeds my/AI's skill level!
 
 ### Request a new sensor/entity
 If you have a read-only sensor you'd like to have added, you can submit an feature request in the issues tab with the following debugging response. If you don't include this, I will simply refer you back to this documentation.
