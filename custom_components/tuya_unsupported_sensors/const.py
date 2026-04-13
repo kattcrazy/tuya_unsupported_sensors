@@ -43,10 +43,12 @@ EMPTY_BODY = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 SENSOR_PROPERTY_CODES = {
     "temperature": ["temp", "temperature", "va_temperature", "temp_current"],
     "humidity": ["humidity", "va_humidity", "humidity_value"],
-    "battery": ["battery", "battery_percentage", "battery_state"],
+    "battery": ["battery", "battery_percentage", "battery_state", "residual_electricity"],
     "battery_value": ["battery_value"],
     "illuminance": ["illuminance_value", "illuminance", "illumination"],
     "alarm": ["temp_alarm", "hum_alarm"],
+    # Smart lock telemetry/status
+    "lock_status": ["alarm_lock", "beep_volume"],
     # Electric meter (ZX-7500 and similar)
     "voltage": ["voltagea", "voltageb", "voltagec"],
     "current": ["currenta", "currentb", "currentc", "current"],

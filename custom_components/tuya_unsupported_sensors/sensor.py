@@ -43,6 +43,7 @@ def _get_friendly_name(property_code: str) -> str:
         "temperature": "Temperature",
         "humidity": "Humidity",
         "battery": "Battery",
+        "residual_electricity": "Battery",
         "battery_percentage": "Battery",
         "illuminance_value": "Illuminance",
         "illuminance": "Illuminance",
@@ -91,6 +92,12 @@ def _get_friendly_name(property_code: str) -> str:
         "hum_periodic_report": "Humidity Report Interval",
         "temp_sensitivity": "Temp Sensitivity",
         "hum_sensitivity": "Humidity Sensitivity",
+        # Smart lock telemetry/status
+        "alarm_lock": "Lock Alarm",
+        "beep_volume": "Beep Volume",
+        "unlock_card": "Card Unlock Count",
+        "unlock_ble": "BLE Unlock Count",
+        "unlock_phone_remote": "Remote Unlock Count",
     }
     
     # Check exact match first

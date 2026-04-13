@@ -100,6 +100,8 @@ def _get_friendly_name(property_code: str) -> str:
         "presence_state": "Occupancy",
         "presence": "Occupancy",
         "online": "Online",
+        "automatic_lock": "Auto Lock",
+        "rtc_lock": "RTC Lock Status",
     }
     
     # Check exact match first
