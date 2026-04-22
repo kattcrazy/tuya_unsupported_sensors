@@ -139,7 +139,7 @@ def _check_trial_limits(num_devices: int, update_interval: int) -> tuple[bool, s
         warning_msg = (
             f"Warning: Your selection of {update_interval} second intervals with {num_devices} device(s) "
             f"will go over the IOT CORE TRIAL PLAN limits. Recommended minimum interval: {min_interval} seconds. "
-            "I can't remove this limit - it is enforced by Tuya, not this integration."
+            "This limitation cannot be removed fortunately, it's enforced by Tuya, not this integration."
         )
         return (True, warning_msg)
     
@@ -499,15 +499,14 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         config_entry: config_entries.ConfigEntry,
     ) -> "OptionsFlowHandler":
         """Get the options flow for this handler."""
-        return OptionsFlowHandler(config_entry)
+        return OptionsFlowHandler()
 
 
-class OptionsFlowHandler(config_entries.OptionsFlowWithReload):
+class OptionsFlowHandler(config_entries.OptionsFlow):
     """Handle options flow for Tuya Unsupported Sensors."""
 
-    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
+    def __init__(self) -> None:
         """Initialize options flow."""
-        super().__init__(config_entry)
         self._discovered_devices: Optional[list] = None
 
     async def async_step_init(

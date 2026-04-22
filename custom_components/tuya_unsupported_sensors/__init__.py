@@ -137,6 +137,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     
     await _register_devices(hass, entry, discovered_devices)
+    entry.async_on_unload(entry.add_update_listener(_async_update_listener))
     clear_runtime_issues(hass, entry.entry_id)
     
     return True
@@ -152,6 +153,13 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return unload_ok
 
 
+async def _async_update_listener(
+    hass: HomeAssistant, entry: ConfigEntry
+) -> None:
+    """Handle config entry updates."""
+    await hass.config_entries.async_reload(entry.entry_id)
+
+
 async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Handle config entry removal."""
     clear_runtime_issues(hass, entry.entry_id)
@@ -161,20 +169,26 @@ async def async_remove_config_entry_device(
     hass: HomeAssistant, config_entry: ConfigEntry, device_entry: DeviceEntry
 ) -> bool:
     """Remove a device from this config entry."""
-    target_device_id = None
+    target_device_ids: set[str] = set()
     for identifier_domain, identifier_value in device_entry.identifiers:
         if identifier_domain == DOMAIN:
-            target_device_id = str(identifier_value)
-            break
+            raw = str(identifier_value)
+            target_device_ids.add(raw)
+            target_device_ids.add(raw.lower())
 
-    if target_device_id is None:
+    if not target_device_ids:
         return False
 
     current_devices = list(_get_entry_value(config_entry, CONF_DEVICES, []))
-    if target_device_id not in current_devices:
+    current_device_map = {str(device_id): str(device_id).lower() for device_id in current_devices}
+    matching_devices = [
+        original for original, lowered in current_device_map.items()
+        if original in target_device_ids or lowered in target_device_ids
+    ]
+    if not matching_devices:
         return False
 
-    updated_devices = [device_id for device_id in current_devices if device_id != target_device_id]
+    updated_devices = [device_id for device_id in current_devices if str(device_id) not in matching_devices]
     update_interval = _get_entry_value(config_entry, CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL)
     new_data = {
         CONF_CLIENT_ID: config_entry.data[CONF_CLIENT_ID],
