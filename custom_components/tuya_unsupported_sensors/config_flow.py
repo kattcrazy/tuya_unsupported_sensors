@@ -32,6 +32,7 @@ from .exceptions import (
     TuyaAuthError,
     TuyaConnectionError,
     TuyaDatacenterMismatchError,
+    TuyaDataError,
     TuyaDiscoveryError,
     TuyaSubscriptionExpiredError,
 )
@@ -343,8 +344,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except TuyaSubscriptionExpiredError as err:
                 _LOGGER.exception("Error discovering devices: %s", err)
                 return self.async_abort(reason="subscription_expired")
-            except (TuyaDiscoveryError, TuyaConnectionError) as err:
+            except (TuyaDiscoveryError, TuyaConnectionError, TuyaDataError) as err:
                 _LOGGER.exception("Error discovering devices: %s", err)
+                return self.async_abort(reason="discovery_failed")
+            except Exception as err:
+                _LOGGER.exception("Unexpected error discovering devices: %s", err)
                 return self.async_abort(reason="discovery_failed")
         
         return await self.async_step_select_devices()
@@ -376,8 +380,15 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         added_devices = []
         
         for device in self._discovered_devices or []:
-            device_id = device.get("id", "")
-            device_name = device.get("customName") or device.get("name", "Unknown Device")
+            if not isinstance(device, dict):
+                _LOGGER.debug("Skipping malformed discovered device entry: %s", device)
+                continue
+            raw_device_id = device.get("id", "")
+            device_id = str(raw_device_id or "").strip()
+            if not device_id:
+                _LOGGER.debug("Skipping discovered device with missing ID: %s", device)
+                continue
+            device_name = str(device.get("customName") or device.get("name", "Unknown Device"))
             
             # Check if device is already added by Tuya device ID only
             # Don't match by name to avoid false positives with non-Tuya devices
@@ -522,6 +533,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 class OptionsFlowHandler(config_entries.OptionsFlow):
     """Handle options flow for Tuya Unsupported Sensors."""
 
+    _STEP_CHOICE_KEY = "menu_action"
+
     def __init__(self) -> None:
         """Initialize options flow."""
         self._discovered_devices: Optional[list] = None
@@ -530,23 +543,31 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         self, user_input: Optional[Dict[str, Any]] = None
     ) -> FlowResult:
         """Manage the options - show menu."""
+        errors: Dict[str, str] = {}
         if user_input is not None:
-            next_step = user_input.get("Choose")
-            if next_step == "devices":
-                return await self.async_step_discover_devices()
-            elif next_step == "interval":
-                return await self.async_step_update_interval()
+            try:
+                # Backward compatibility with older key name.
+                next_step = user_input.get(self._STEP_CHOICE_KEY) or user_input.get("Choose")
+                if next_step == "devices":
+                    return await self.async_step_discover_devices()
+                if next_step == "interval":
+                    return await self.async_step_update_interval()
+                errors["base"] = "invalid_selection"
+            except Exception as err:
+                _LOGGER.exception("Error in options init step: %s", err)
+                errors["base"] = "unknown"
         
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema(
                 {
-                    vol.Required("Choose", default="devices"): vol.In({
+                    vol.Required(self._STEP_CHOICE_KEY, default="devices"): vol.In({
                         "devices": "Add device(s)",
                         "interval": "Update Interval",
                     }),
                 }
             ),
+            errors=errors,
         )
 
     async def async_step_discover_devices(
@@ -599,7 +620,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 _LOGGER.exception("Error discovering devices: %s", err)
                 create_auth_issue(self.hass, self.config_entry.entry_id, str(err))
                 return self.async_abort(reason="invalid_auth")
-            except (TuyaDiscoveryError, TuyaConnectionError) as err:
+            except (TuyaDiscoveryError, TuyaConnectionError, TuyaDataError) as err:
                 _LOGGER.exception("Error discovering devices: %s", err)
                 probe_result = await get_discovery_probe_result(
                     self.hass,
@@ -611,6 +632,9 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 create_discovery_issue(
                     self.hass, self.config_entry.entry_id, str(err), probe_result=probe_result
                 )
+                return self.async_abort(reason="discovery_failed")
+            except Exception as err:
+                _LOGGER.exception("Unexpected error discovering devices: %s", err)
                 return self.async_abort(reason="discovery_failed")
         
         return await self.async_step_select_devices()
@@ -660,13 +684,21 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         # Get device IDs already added via other Tuya integrations
         existing_device_ids = _get_existing_tuya_device_ids(self.hass)
         
-        # Separate devices into already-added and not-added
+        # Separate devices into current integration, already-added elsewhere, and not-added.
+        current_integration_devices = []
         unadded_devices = []
         added_devices = []
         
         for device in self._discovered_devices or []:
-            device_id = device.get("id", "")
-            device_name = device.get("customName") or device.get("name", "Unknown Device")
+            if not isinstance(device, dict):
+                _LOGGER.debug("Skipping malformed discovered device entry: %s", device)
+                continue
+            raw_device_id = device.get("id", "")
+            device_id = str(raw_device_id or "").strip()
+            if not device_id:
+                _LOGGER.debug("Skipping discovered device with missing ID: %s", device)
+                continue
+            device_name = str(device.get("customName") or device.get("name", "Unknown Device"))
             
             # Check if device is already added by Tuya device ID only
             # Don't match by name to avoid false positives with non-Tuya devices
@@ -715,7 +747,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         )
         
         info_text = (
-            "Select only new devices to add. To remove devices, use the relevant device's 3-dot menu and choose Delete."
+            "Select only new devices to add. To delete devices, use the relevant device's 3-dot menu and choose Delete device."
         )
         if current_integration_devices or added_devices:
             info_text += (

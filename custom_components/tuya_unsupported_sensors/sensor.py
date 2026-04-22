@@ -10,6 +10,7 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -192,6 +193,50 @@ def _get_unit_of_measurement(property_code: str, value: Any, device_data: Option
     return None
 
 
+def _resolve_sensor_unique_id(
+    entity_registry,
+    device_registry,
+    config_entry_id: str,
+    device_id: str,
+    device_name: str,
+    property_code: str,
+) -> str:
+    """Resolve unique_id with backward compatibility for upgraded users."""
+    # First, try to reuse an existing entity unique_id already linked to this device.
+    device_entry = device_registry.async_get_device(identifiers={(DOMAIN, device_id)})
+    if device_entry is not None:
+        existing_entries = er.async_entries_for_device(
+            entity_registry, device_entry.id, include_disabled_entities=True
+        )
+        friendly_suffix = f"_{slugify(_get_friendly_name(property_code))}"
+        property_suffix = f"_{slugify(property_code)}"
+        matching_entries = [
+            entry
+            for entry in existing_entries
+            if entry.config_entry_id == config_entry_id
+            and entry.entity_id.startswith("sensor.")
+            and (
+                entry.unique_id.endswith(friendly_suffix)
+                or entry.unique_id.endswith(property_suffix)
+            )
+        ]
+        if matching_entries:
+            active_matches = [entry for entry in matching_entries if entry.disabled_by is None]
+            selected = (active_matches or matching_entries)[0]
+            return selected.unique_id
+
+    friendly_name = _get_friendly_name(property_code)
+    legacy_unique_id = f"{slugify(device_name)}_{slugify(friendly_name)}"
+    stable_unique_id = f"{slugify(device_id)}_{slugify(property_code)}"
+
+    # Prefer an existing unique_id to avoid creating duplicate entities after upgrades.
+    if er.async_get_entity_id("sensor", DOMAIN, legacy_unique_id):
+        return legacy_unique_id
+    if er.async_get_entity_id("sensor", DOMAIN, stable_unique_id):
+        return stable_unique_id
+    return stable_unique_id
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
@@ -203,6 +248,8 @@ async def async_setup_entry(
     ]["coordinator"]
     device_ids = entry.data[CONF_DEVICES]
     discovered_devices = hass.data[DOMAIN][entry.entry_id].get("devices", {})
+    entity_registry = er.async_get(hass)
+    device_registry = dr.async_get(hass)
     
     entities = []
     
@@ -240,30 +287,42 @@ async def async_setup_entry(
                 device_class = _get_sensor_device_class(property_code)
                 if device_class == SensorDeviceClass.BATTERY and not _is_numeric_value(value):
                     # Don't set device_class for text battery values
+                    unique_id = _resolve_sensor_unique_id(
+                        entity_registry, device_registry, entry.entry_id, device_id, device_name, property_code
+                    )
                     entity = ExtraTuyaSensor(
                         coordinator=coordinator,
                         device_id=device_id,
                         device_name=device_name,
                         device_model=device_model,
                         property_code=property_code,
+                        unique_id=unique_id,
                         force_device_class=None,  # Override device_class
                     )
                 else:
+                    unique_id = _resolve_sensor_unique_id(
+                        entity_registry, device_registry, entry.entry_id, device_id, device_name, property_code
+                    )
                     entity = ExtraTuyaSensor(
                         coordinator=coordinator,
                         device_id=device_id,
                         device_name=device_name,
                         device_model=device_model,
                         property_code=property_code,
+                        unique_id=unique_id,
                     )
                 entities.append(entity)
             elif _is_numeric_value(value):
+                unique_id = _resolve_sensor_unique_id(
+                    entity_registry, device_registry, entry.entry_id, device_id, device_name, property_code
+                )
                 entity = ExtraTuyaSensor(
                     coordinator=coordinator,
                     device_id=device_id,
                     device_name=device_name,
                     device_model=device_model,
                     property_code=property_code,
+                    unique_id=unique_id,
                 )
                 entities.append(entity)
     
@@ -280,6 +339,7 @@ class ExtraTuyaSensor(CoordinatorEntity, SensorEntity):
         device_name: str,
         device_model: str,
         property_code: str,
+        unique_id: str,
         force_device_class: Optional[str] = None,
     ) -> None:
         """Initialize the sensor."""
@@ -292,8 +352,7 @@ class ExtraTuyaSensor(CoordinatorEntity, SensorEntity):
         friendly_name = _get_friendly_name(property_code)
         self._attr_name = f"{device_name} {friendly_name}"
         
-        # Keep unique ID stable across device renames by using immutable IDs.
-        self._attr_unique_id = f"{slugify(device_id)}_{slugify(property_code)}"
+        self._attr_unique_id = unique_id
         
         # Store the intended device class, but we'll check it dynamically
         # force_device_class can override (e.g., None for text battery values)

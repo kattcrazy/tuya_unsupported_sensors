@@ -9,6 +9,7 @@ from homeassistant.components.binary_sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -117,6 +118,48 @@ def _get_friendly_name(property_code: str) -> str:
     return property_code.replace("_", " ").title()
 
 
+def _resolve_binary_unique_id(
+    entity_registry,
+    device_registry,
+    config_entry_id: str,
+    device_id: str,
+    device_name: str,
+    property_code: str,
+) -> str:
+    """Resolve unique_id with backward compatibility for upgraded users."""
+    device_entry = device_registry.async_get_device(identifiers={(DOMAIN, device_id)})
+    if device_entry is not None:
+        existing_entries = er.async_entries_for_device(
+            entity_registry, device_entry.id, include_disabled_entities=True
+        )
+        friendly_suffix = f"_{slugify(_get_friendly_name(property_code))}"
+        property_suffix = f"_{slugify(property_code)}"
+        matching_entries = [
+            entry
+            for entry in existing_entries
+            if entry.config_entry_id == config_entry_id
+            and entry.entity_id.startswith("binary_sensor.")
+            and (
+                entry.unique_id.endswith(friendly_suffix)
+                or entry.unique_id.endswith(property_suffix)
+            )
+        ]
+        if matching_entries:
+            active_matches = [entry for entry in matching_entries if entry.disabled_by is None]
+            selected = (active_matches or matching_entries)[0]
+            return selected.unique_id
+
+    friendly_name = _get_friendly_name(property_code)
+    legacy_unique_id = f"{slugify(device_name)}_{slugify(friendly_name)}"
+    stable_unique_id = f"{slugify(device_id)}_{slugify(property_code)}"
+
+    if er.async_get_entity_id("binary_sensor", DOMAIN, legacy_unique_id):
+        return legacy_unique_id
+    if er.async_get_entity_id("binary_sensor", DOMAIN, stable_unique_id):
+        return stable_unique_id
+    return stable_unique_id
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
@@ -128,6 +171,8 @@ async def async_setup_entry(
     ]["coordinator"]
     device_ids = entry.data[CONF_DEVICES]
     discovered_devices = hass.data[DOMAIN][entry.entry_id].get("devices", {})
+    entity_registry = er.async_get(hass)
+    device_registry = dr.async_get(hass)
     
     entities = []
     
@@ -167,22 +212,30 @@ async def async_setup_entry(
             
             # Prioritize known binary sensor property codes
             if property_code_lower in binary_codes:
+                unique_id = _resolve_binary_unique_id(
+                    entity_registry, device_registry, entry.entry_id, device_id, device_name, property_code
+                )
                 entity = ExtraTuyaBinarySensor(
                     coordinator=coordinator,
                     device_id=device_id,
                     device_name=device_name,
                     device_model=device_model,
                     property_code=property_code,
+                    unique_id=unique_id,
                 )
                 entities.append(entity)
             elif _is_binary_value(value):
                 # Also create binary sensors for other binary values
+                unique_id = _resolve_binary_unique_id(
+                    entity_registry, device_registry, entry.entry_id, device_id, device_name, property_code
+                )
                 entity = ExtraTuyaBinarySensor(
                     coordinator=coordinator,
                     device_id=device_id,
                     device_name=device_name,
                     device_model=device_model,
                     property_code=property_code,
+                    unique_id=unique_id,
                 )
                 entities.append(entity)
             elif _is_likely_contact_sensor(property_code, value):
@@ -193,12 +246,16 @@ async def async_setup_entry(
                     property_code,
                     value
                 )
+                unique_id = _resolve_binary_unique_id(
+                    entity_registry, device_registry, entry.entry_id, device_id, device_name, property_code
+                )
                 entity = ExtraTuyaBinarySensor(
                     coordinator=coordinator,
                     device_id=device_id,
                     device_name=device_name,
                     device_model=device_model,
                     property_code=property_code,
+                    unique_id=unique_id,
                 )
                 entities.append(entity)
     
@@ -223,6 +280,7 @@ class ExtraTuyaBinarySensor(CoordinatorEntity, BinarySensorEntity):
         device_name: str,
         device_model: str,
         property_code: str,
+        unique_id: str,
     ) -> None:
         """Initialize the binary sensor."""
         super().__init__(coordinator)
@@ -234,8 +292,7 @@ class ExtraTuyaBinarySensor(CoordinatorEntity, BinarySensorEntity):
         friendly_name = _get_friendly_name(property_code)
         self._attr_name = f"{device_name} {friendly_name}"
         
-        # Keep unique ID stable across device renames by using immutable IDs.
-        self._attr_unique_id = f"{slugify(device_id)}_{slugify(property_code)}"
+        self._attr_unique_id = unique_id
         
         device_class = _get_binary_sensor_device_class(property_code)
         if device_class:

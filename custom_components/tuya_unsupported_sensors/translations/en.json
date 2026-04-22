@@ -25,7 +25,7 @@
       "invalid_auth": "Invalid credentials. Please check your Client ID and Client Secret.",
       "cannot_connect": "Unable to connect to Tuya API. Please check your region selection and network connection.",
       "unknown": "An unexpected error occurred. Please check the logs for details.",
-      "no_new_devices_selected": "No new devices selected. To remove devices, use the relevant device's 3-dot menu and choose Delete."
+      "no_new_devices_selected": "No new devices selected. To delete devices, use the relevant device's 3-dot menu and choose Delete."
     },
     "abort": {
       "already_configured": "This integration is already configured.",
@@ -38,12 +38,23 @@
   },
   "options": {
     "error": {
-      "no_new_devices_selected": "No new devices selected. To remove devices, use the relevant device's 3-dot menu and choose Delete."
+      "no_new_devices_selected": "No new devices selected. To delete devices, use the relevant device's 3-dot menu and choose Delete.",
+      "invalid_selection": "Please choose a valid settings action.",
+      "unknown": "An unexpected error occurred while opening integration settings."
+    },
+    "abort": {
+      "discovery_failed": "Failed to discover devices. Please check credentials, region selection, and subscription state.",
+      "no_devices": "No devices found for these credentials.",
+      "wrong_datacenter": "Device discovery failed because the selected region appears incorrect for this Tuya project.",
+      "subscription_expired": "Device discovery failed because your Tuya IoT Core subscription may be expired or missing permissions.",
+      "invalid_auth": "Authentication failed. Please verify your Tuya API credentials."
     },
     "step": {
       "init": {
         "title": "Integration Settings",
-        "description": "Choose what you want to update."
+        "data": {
+          "menu_action": "Choose an option"
+        }
       },
       "select_devices": {
         "title": "Add device(s)",

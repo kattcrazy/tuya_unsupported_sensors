@@ -61,7 +61,20 @@ async def get_discovery_probe_result(
     ):
         return cache_entry.get("guidance", "Probe could not determine a likely cause.")
 
-    probe = await probe_datacenters(client_id, client_secret)
+    try:
+        probe = await probe_datacenters(client_id, client_secret)
+    except Exception as err:
+        guidance = (
+            "Automatic datacenter probe failed unexpectedly. "
+            f"Reason: {err}"
+        )
+        cache[entry_id] = {
+            "timestamp": now,
+            "client_id": client_id,
+            "current_region": current_region,
+            "guidance": guidance,
+        }
+        return guidance
     successful_regions = probe.get("successful_regions", [])
     subscription_regions = probe.get("subscription_expired_regions", [])
     auth_regions = probe.get("auth_error_regions", [])
