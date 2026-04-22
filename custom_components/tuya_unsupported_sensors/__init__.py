@@ -169,6 +169,12 @@ async def async_remove_config_entry_device(
     hass: HomeAssistant, config_entry: ConfigEntry, device_entry: DeviceEntry
 ) -> bool:
     """Remove a device from this config entry."""
+    _LOGGER.debug(
+        "Device removal requested: entry_id=%s device_id=%s identifiers=%s",
+        config_entry.entry_id,
+        device_entry.id,
+        list(device_entry.identifiers),
+    )
     target_device_ids: set[str] = set()
     for identifier_domain, identifier_value in device_entry.identifiers:
         if identifier_domain == DOMAIN:
@@ -177,18 +183,39 @@ async def async_remove_config_entry_device(
             target_device_ids.add(raw.lower())
 
     if not target_device_ids:
+        _LOGGER.debug(
+            "Device removal rejected: no '%s' identifier found on device %s",
+            DOMAIN,
+            device_entry.id,
+        )
         return False
 
     current_devices = list(_get_entry_value(config_entry, CONF_DEVICES, []))
+    _LOGGER.debug(
+        "Current configured device IDs for entry %s: %s",
+        config_entry.entry_id,
+        current_devices,
+    )
     current_device_map = {str(device_id): str(device_id).lower() for device_id in current_devices}
     matching_devices = [
         original for original, lowered in current_device_map.items()
         if original in target_device_ids or lowered in target_device_ids
     ]
     if not matching_devices:
-        return False
+        _LOGGER.debug(
+            "Device ID not found in configured list for this entry (likely disabled/orphaned). "
+            "Allowing HA to detach config entry from device. target_ids=%s",
+            sorted(target_device_ids),
+        )
+        return True
 
     updated_devices = [device_id for device_id in current_devices if str(device_id) not in matching_devices]
+    _LOGGER.debug(
+        "Removing device IDs %s from entry %s. Updated IDs: %s",
+        matching_devices,
+        config_entry.entry_id,
+        updated_devices,
+    )
     update_interval = _get_entry_value(config_entry, CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL)
     new_data = {
         CONF_CLIENT_ID: config_entry.data[CONF_CLIENT_ID],
@@ -201,6 +228,10 @@ async def async_remove_config_entry_device(
     new_options[CONF_DEVICES] = updated_devices
     new_options[CONF_UPDATE_INTERVAL] = update_interval
     hass.config_entries.async_update_entry(config_entry, data=new_data, options=new_options)
+    _LOGGER.debug(
+        "Device removal accepted for entry %s. Reload should be triggered by update listener.",
+        config_entry.entry_id,
+    )
     return True
 
 

@@ -41,6 +41,9 @@
     }
   },
   "options": {
+    "error": {
+      "no_new_devices_selected": "No new devices selected. To remove devices, use the relevant device's 3-dot menu and choose Delete."
+    },
     "step": {
       "init": {
         "title": "Integration Settings",
