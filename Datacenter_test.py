@@ -166,12 +166,11 @@ def main():
     print("Testing all Tuya datacenter URLs...")
     print("="*60)
     
+    all_results = []
     for region_name, base_url in REGIONS.items():
-        test_datacenter(client_id, client_secret, base_url, region_name)
-
-if __name__ == "__main__":
-    main()
-ll_results.append(result)
+        all_results.append(
+            test_datacenter(client_id, client_secret, base_url, region_name)
+        )
     
     print("\n" + "="*60)
     print("SUMMARY OF ALL RESULTS")
@@ -182,17 +181,18 @@ ll_results.append(result)
     
     if successful_regions:
         print(f"\n✓ Successful connections ({len(successful_regions)}):")
-        for result in successful_regions:
-            print(f"  - {result['region']:12} ({result['base_url']:35}) - {result['device_count']:3} device(s)")
-            if result['device_names']:
-                print(f"    Devices: {', '.join(result['device_names'][:5])}")
-                if len(result['device_names']) > 5:
-                    print(f"    ... and {len(result['device_names']) - 5} more")
+        for res in successful_regions:
+            print(f"  - {res['region']:12} ({res['base_url']:35}) - {res['device_count']:3} device(s)")
+            if res['device_names']:
+                print(f"    Devices: {', '.join(res['device_names'][:5])}")
+                if len(res['device_names']) > 5:
+                    print(f"    ... and {len(res['device_names']) - 5} more")
     
     if failed_regions:
         print(f"\n✗ Failed connections ({len(failed_regions)}):")
-        for result in failed_regions:
-            print(f"  - {result['region']:12} ({result['base_url']:35}) - {result['error']}")
+        for res in failed_regions:
+            err = res.get("error")
+            print(f"  - {res['region']:12} ({res['base_url']:35}) - {err}")
     
     return {
         "results": all_results,
