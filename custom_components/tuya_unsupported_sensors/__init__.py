@@ -6,7 +6,10 @@ from typing import Any, Dict
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers import config_validation as cv, device_registry as dr
+from homeassistant.helpers.device_registry import DeviceEntry
+from homeassistant.helpers.update_coordinator import UpdateFailed
 
 from .const import (
     CONF_CLIENT_ID,
@@ -20,6 +23,19 @@ from .const import (
     DOMAIN,
 )
 from .coordinator import ExtraTuyaSensorsDataUpdateCoordinator
+from .exceptions import (
+    TuyaAuthError,
+    TuyaConnectionError,
+    TuyaDatacenterMismatchError,
+    TuyaDiscoveryError,
+    TuyaSubscriptionExpiredError,
+)
+from .repairs import (
+    clear_runtime_issues,
+    create_auth_issue,
+    create_discovery_issue,
+    get_discovery_probe_result,
+)
 from .tuya_api import TuyaAPIClient
 
 _LOGGER = logging.getLogger(__name__)
@@ -34,6 +50,13 @@ async def async_setup(hass: HomeAssistant, config: Dict[str, Any]) -> bool:
     return True
 
 
+def _get_entry_value(entry: ConfigEntry, key: str, default: Any = None) -> Any:
+    """Get config value with options precedence."""
+    if key in entry.options:
+        return entry.options.get(key, default)
+    return entry.data.get(key, default)
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Tuya Unsupported Sensors from a config entry."""
     hass.data.setdefault(DOMAIN, {})
@@ -41,8 +64,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     client_id = entry.data[CONF_CLIENT_ID]
     client_secret = entry.data[CONF_CLIENT_SECRET]
     region = entry.data[CONF_REGION]
-    device_ids = entry.data[CONF_DEVICES]
-    update_interval = entry.data.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL)
+    device_ids = _get_entry_value(entry, CONF_DEVICES, [])
+    update_interval = _get_entry_value(entry, CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL)
     
     # Validate update_interval is within allowed range
     if update_interval < MIN_UPDATE_INTERVAL or update_interval > MAX_UPDATE_INTERVAL:
@@ -62,9 +85,27 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         api_client,
         device_ids,
         update_interval,
+        entry.entry_id,
     )
     
-    await coordinator.async_config_entry_first_refresh()
+    try:
+        await coordinator.async_config_entry_first_refresh()
+    except UpdateFailed as err:
+        cause = err.__cause__
+        if isinstance(cause, TuyaAuthError):
+            create_auth_issue(hass, entry.entry_id, str(cause))
+            raise ConfigEntryAuthFailed(str(cause)) from err
+        if isinstance(cause, (TuyaConnectionError, TuyaDiscoveryError, TuyaDatacenterMismatchError, TuyaSubscriptionExpiredError)):
+            probe_result = await get_discovery_probe_result(
+                hass,
+                entry.entry_id,
+                client_id,
+                client_secret,
+                region,
+            )
+            create_discovery_issue(hass, entry.entry_id, str(cause), probe_result=probe_result)
+            raise ConfigEntryNotReady(str(cause)) from err
+        raise ConfigEntryNotReady(str(err)) from err
     
     discovered_devices = {}
     try:
@@ -73,8 +114,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             device_id = device.get("id")
             if device_id in device_ids:
                 discovered_devices[device_id] = device
-    except Exception as err:
+    except (TuyaConnectionError, TuyaDiscoveryError, TuyaDatacenterMismatchError, TuyaSubscriptionExpiredError) as err:
         _LOGGER.warning("Could not fetch device info: %s", err)
+        probe_result = await get_discovery_probe_result(
+            hass,
+            entry.entry_id,
+            client_id,
+            client_secret,
+            region,
+        )
+        create_discovery_issue(hass, entry.entry_id, str(err), probe_result=probe_result)
+    except TuyaAuthError as err:
+        _LOGGER.warning("Could not fetch device info: %s", err)
+        create_auth_issue(hass, entry.entry_id, str(err))
     
     hass.data[DOMAIN][entry.entry_id] = {
         "coordinator": coordinator,
@@ -85,8 +137,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     
     await _register_devices(hass, entry, discovered_devices)
-    
-    entry.async_on_unload(entry.add_update_listener(_async_update_listener))
+    clear_runtime_issues(hass, entry.entry_id)
     
     return True
 
@@ -101,11 +152,42 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return unload_ok
 
 
-async def _async_update_listener(
-    hass: HomeAssistant, entry: ConfigEntry
-) -> None:
-    """Handle options update."""
-    await hass.config_entries.async_reload(entry.entry_id)
+async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Handle config entry removal."""
+    clear_runtime_issues(hass, entry.entry_id)
+
+
+async def async_remove_config_entry_device(
+    hass: HomeAssistant, config_entry: ConfigEntry, device_entry: DeviceEntry
+) -> bool:
+    """Remove a device from this config entry."""
+    target_device_id = None
+    for identifier_domain, identifier_value in device_entry.identifiers:
+        if identifier_domain == DOMAIN:
+            target_device_id = str(identifier_value)
+            break
+
+    if target_device_id is None:
+        return False
+
+    current_devices = list(_get_entry_value(config_entry, CONF_DEVICES, []))
+    if target_device_id not in current_devices:
+        return False
+
+    updated_devices = [device_id for device_id in current_devices if device_id != target_device_id]
+    update_interval = _get_entry_value(config_entry, CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL)
+    new_data = {
+        CONF_CLIENT_ID: config_entry.data[CONF_CLIENT_ID],
+        CONF_CLIENT_SECRET: config_entry.data[CONF_CLIENT_SECRET],
+        CONF_REGION: config_entry.data[CONF_REGION],
+        CONF_DEVICES: updated_devices,
+        CONF_UPDATE_INTERVAL: update_interval,
+    }
+    new_options = dict(config_entry.options)
+    new_options[CONF_DEVICES] = updated_devices
+    new_options[CONF_UPDATE_INTERVAL] = update_interval
+    hass.config_entries.async_update_entry(config_entry, data=new_data, options=new_options)
+    return True
 
 
 async def _register_devices(

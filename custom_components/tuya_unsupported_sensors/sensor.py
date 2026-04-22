@@ -292,11 +292,8 @@ class ExtraTuyaSensor(CoordinatorEntity, SensorEntity):
         friendly_name = _get_friendly_name(property_code)
         self._attr_name = f"{device_name} {friendly_name}"
         
-        # Use slugified device name and friendly name for unique_id
-        # This ensures entity IDs use custom names and friendly property names
-        device_name_slug = slugify(device_name)
-        friendly_name_slug = slugify(friendly_name)
-        self._attr_unique_id = f"{device_name_slug}_{friendly_name_slug}"
+        # Keep unique ID stable across device renames by using immutable IDs.
+        self._attr_unique_id = f"{slugify(device_id)}_{slugify(property_code)}"
         
         # Store the intended device class, but we'll check it dynamically
         # force_device_class can override (e.g., None for text battery values)

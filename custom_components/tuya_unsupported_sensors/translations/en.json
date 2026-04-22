@@ -7,11 +7,7 @@
       },
       "credentials": {
         "title": "Enter Credentials",
-        "description": "Enter your Tuya Cloud API credentials. Details in intergration readme"
-      },
-      "discover_devices": {
-        "title": "Discovering Devices",
-        "description": "Please wait while we discover your devices..."
+        "description": "Enter your Tuya Cloud API credentials. Details in integration readme."
       },
       "select_devices": {
         "title": "Select Devices",
@@ -26,14 +22,14 @@
       }
     },
     "error": {
-      "invalid_auth": "Invalid credentials. Please check your Client ID and Client Secret. Note: If your Tuya developer trial expired, you'll need to apply for an extension and wait for it to be renewed.",
+      "invalid_auth": "Invalid credentials. Please check your Client ID and Client Secret.",
       "cannot_connect": "Unable to connect to Tuya API. Please check your region selection and network connection.",
       "unknown": "An unexpected error occurred. Please check the logs for details.",
       "no_new_devices_selected": "No new devices selected. To remove devices, use the relevant device's 3-dot menu and choose Delete."
     },
     "abort": {
       "already_configured": "This integration is already configured.",
-      "discovery_failed": "Failed to discover devices. Error: {error}. Please check your credentials, region selection, and ensure your Tuya developer trial is active.",
+      "discovery_failed": "Failed to discover devices. Please check credentials, region selection, and subscription state.",
       "no_devices": "No devices found. Please ensure your Tuya account has devices associated with these API credentials.",
       "wrong_datacenter": "Device discovery failed because the selected region appears incorrect for this Tuya project. Try another datacenter/region.",
       "subscription_expired": "Device discovery failed because your Tuya IoT Core subscription may be expired or missing permissions.",
@@ -66,8 +62,7 @@
     },
     "discovery_failed_datacenter_or_subscription": {
       "title": "Tuya discovery failed (datacenter or subscription)",
-      "description": "Tuya Unsupported Sensors failed to discover/update devices. Latest error: {error}\\n\\nAutomatic probe result: {probe_result}\\n\\nIf the result indicates subscription expiry, renew IoT Core at {iot_core_url}. If it indicates a region mismatch, change this integration to the suggested datacenter. Use Learn More for step-by-step checks."
+      "description": "Tuya Unsupported Sensors failed to discover/update devices. Latest error: {error}\n\nAutomatic probe result: {probe_result}\n\nIf the result indicates subscription expiry, renew IoT Core at {iot_core_url}. If it indicates a region mismatch, change this integration to the suggested datacenter. Use Learn More for step-by-step checks."
     }
   }
 }
-

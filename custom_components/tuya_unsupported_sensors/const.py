@@ -7,6 +7,7 @@ CONF_CLIENT_SECRET = "client_secret"
 CONF_REGION = "region"
 CONF_DEVICES = "devices"
 CONF_UPDATE_INTERVAL = "update_interval"
+CONF_LAST_ERROR = "last_error"
 
 DEFAULT_UPDATE_INTERVAL = 60
 MIN_UPDATE_INTERVAL = 1
@@ -39,6 +40,11 @@ PROPERTIES_URL = "/v2.0/cloud/thing/{device_id}/shadow/properties"
 MODEL_URL = "/v2.0/cloud/thing/{device_id}/model"
 
 EMPTY_BODY = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
+ISSUE_ID_API_AUTH_FAILED = "api_auth_failed"
+ISSUE_ID_DISCOVERY_FAILED = "discovery_failed_datacenter_or_subscription"
+DISCOVERY_HELP_URL = "https://github.com/kattcrazy/tuya_unsupported_sensors#discovery_failed-error"
+IOT_CORE_URL = "https://www.tuya.com/vas/commodity/IOT_CORE_V2"
 
 SENSOR_PROPERTY_CODES = {
     "temperature": ["temp", "temperature", "va_temperature", "temp_current"],

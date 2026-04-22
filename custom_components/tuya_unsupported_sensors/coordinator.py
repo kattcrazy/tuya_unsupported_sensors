@@ -7,11 +7,20 @@ from typing import Any, Dict, List
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .const import (
-    CONF_DEVICES,
-    CONF_UPDATE_INTERVAL,
-    DEFAULT_UPDATE_INTERVAL,
-    DOMAIN,
+from .const import DOMAIN
+from .exceptions import (
+    TuyaAuthError,
+    TuyaConnectionError,
+    TuyaDatacenterMismatchError,
+    TuyaDataError,
+    TuyaDiscoveryError,
+    TuyaSubscriptionExpiredError,
+)
+from .repairs import (
+    clear_runtime_issues,
+    create_auth_issue,
+    create_discovery_issue,
+    get_discovery_probe_result,
 )
 from .tuya_api import TuyaAPIClient
 
@@ -27,6 +36,7 @@ class ExtraTuyaSensorsDataUpdateCoordinator(DataUpdateCoordinator):
         client: TuyaAPIClient,
         device_ids: List[str],
         update_interval: int,
+        entry_id: str,
     ) -> None:
         """Initialize coordinator.
         
@@ -39,6 +49,7 @@ class ExtraTuyaSensorsDataUpdateCoordinator(DataUpdateCoordinator):
         self.client = client
         self.device_ids = device_ids
         self.update_interval_seconds = update_interval
+        self.entry_id = entry_id
         
         update_interval_timedelta = timedelta(seconds=update_interval)
         
@@ -67,6 +78,10 @@ class ExtraTuyaSensorsDataUpdateCoordinator(DataUpdateCoordinator):
         """
         data: Dict[str, Dict[str, Any]] = {}
         token_error_occurred = False
+        auth_error_seen = False
+        discovery_error_seen = False
+        first_auth_error: Exception | None = None
+        first_discovery_error: Exception | None = None
         now = datetime.now()
         max_stale_time = timedelta(seconds=self.update_interval_seconds)  # Allow 1x update interval for stale data
         
@@ -89,6 +104,63 @@ class ExtraTuyaSensorsDataUpdateCoordinator(DataUpdateCoordinator):
                         _LOGGER.debug("Could not fetch scales for device %s: %s", device_id, scale_err)
                         # Continue without scales - values will be used as-is
                         
+            except TuyaAuthError as err:
+                auth_error_seen = True
+                if first_auth_error is None:
+                    first_auth_error = err
+                error_str = str(err)
+                if "1010" in error_str or "token invalid" in error_str.lower():
+                    if not token_error_occurred:
+                        token_age = None
+                        if self.client._token_expires_at:
+                            token_age = (now - (self.client._token_expires_at - timedelta(seconds=7200))).total_seconds() / 3600
+
+                        _LOGGER.warning(
+                            "ERROR 1010 (Token Invalid) detected for device %s. "
+                            "REASON: Tuya API access tokens expire after ~2 hours. "
+                            "Token age: %s hours. "
+                            "ACTION: Clearing cached token and refreshing. "
+                            "Sensors may show 'unknown' state temporarily until token refresh completes.",
+                            device_id,
+                            f"{token_age:.2f}" if token_age else "unknown"
+                        )
+                        self.client._clear_token()
+                        token_error_occurred = True
+                create_auth_issue(self.hass, self.entry_id, str(err))
+                if self.data is not None and device_id in self.data and device_id in self._last_successful_update:
+                    time_since_update = now - self._last_successful_update[device_id]
+                    if time_since_update <= max_stale_time:
+                        data[device_id] = self.data.get(device_id, {})
+                    else:
+                        data[device_id] = {}
+                else:
+                    data[device_id] = {}
+            except (TuyaSubscriptionExpiredError, TuyaDatacenterMismatchError) as err:
+                discovery_error_seen = True
+                if first_discovery_error is None:
+                    first_discovery_error = err
+                _LOGGER.error("Discovery/subscription issue for device %s: %s", device_id, err)
+                if self.data is not None and device_id in self.data and device_id in self._last_successful_update:
+                    time_since_update = now - self._last_successful_update[device_id]
+                    if time_since_update <= max_stale_time:
+                        data[device_id] = self.data.get(device_id, {})
+                    else:
+                        data[device_id] = {}
+                else:
+                    data[device_id] = {}
+            except (TuyaConnectionError, TuyaDiscoveryError, TuyaDataError) as err:
+                discovery_error_seen = True
+                if first_discovery_error is None:
+                    first_discovery_error = err
+                _LOGGER.error("Error updating device %s: %s", device_id, err)
+                if self.data is not None and device_id in self.data and device_id in self._last_successful_update:
+                    time_since_update = now - self._last_successful_update[device_id]
+                    if time_since_update <= max_stale_time:
+                        data[device_id] = self.data.get(device_id, {})
+                    else:
+                        data[device_id] = {}
+                else:
+                    data[device_id] = {}
             except ValueError as err:
                 error_str = str(err)
                 # Check if this is a token error (1010)
@@ -261,6 +333,28 @@ class ExtraTuyaSensorsDataUpdateCoordinator(DataUpdateCoordinator):
             data = retry_data
         
         if not data:
+            if first_auth_error is not None:
+                raise UpdateFailed("Failed to update any devices due to authentication error") from first_auth_error
+            if first_discovery_error is not None:
+                raise UpdateFailed("Failed to update any devices due to discovery/connectivity error") from first_discovery_error
             raise UpdateFailed("Failed to update any devices")
+
+        if discovery_error_seen and first_discovery_error is not None:
+            probe_result = await get_discovery_probe_result(
+                self.hass,
+                self.entry_id,
+                self.client._client_id,
+                self.client._client_secret,
+                self.client._region,
+            )
+            create_discovery_issue(
+                self.hass,
+                self.entry_id,
+                str(first_discovery_error),
+                probe_result=probe_result,
+            )
+
+        if not auth_error_seen and not discovery_error_seen:
+            clear_runtime_issues(self.hass, self.entry_id)
         
         return data

@@ -234,11 +234,8 @@ class ExtraTuyaBinarySensor(CoordinatorEntity, BinarySensorEntity):
         friendly_name = _get_friendly_name(property_code)
         self._attr_name = f"{device_name} {friendly_name}"
         
-        # Use slugified device name and friendly name for unique_id
-        # This ensures entity IDs use custom names (e.g., "joel_s_office_contact")
-        device_name_slug = slugify(device_name)
-        friendly_name_slug = slugify(friendly_name)
-        self._attr_unique_id = f"{device_name_slug}_{friendly_name_slug}"
+        # Keep unique ID stable across device renames by using immutable IDs.
+        self._attr_unique_id = f"{slugify(device_id)}_{slugify(property_code)}"
         
         device_class = _get_binary_sensor_device_class(property_code)
         if device_class:

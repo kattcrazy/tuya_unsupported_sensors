@@ -28,6 +28,14 @@ from .const import (
     SECONDS_PER_MONTH,
     MESSAGES_PER_API_CALL,
 )
+from .exceptions import (
+    TuyaAuthError,
+    TuyaConnectionError,
+    TuyaDatacenterMismatchError,
+    TuyaDiscoveryError,
+    TuyaSubscriptionExpiredError,
+)
+from .repairs import create_auth_issue, create_discovery_issue, get_discovery_probe_result
 from .tuya_api import TuyaAPIClient
 
 _LOGGER = logging.getLogger(__name__)
@@ -128,7 +136,11 @@ def _check_trial_limits(num_devices: int, update_interval: int) -> tuple[bool, s
     
     if warnings:
         min_interval = _calculate_minimum_interval(num_devices)
-        warning_msg = f"Warning: Your selection of {update_interval} second intervals with {num_devices} device(s) will go over the IOT CORE TRIAL PLAN limits. Recommended minimum interval: {min_interval} seconds"
+        warning_msg = (
+            f"Warning: Your selection of {update_interval} second intervals with {num_devices} device(s) "
+            f"will go over the IOT CORE TRIAL PLAN limits. Recommended minimum interval: {min_interval} seconds. "
+            "I can't remove this limit - it is enforced by Tuya, not this integration."
+        )
         return (True, warning_msg)
     
     return (False, "")
@@ -207,6 +219,13 @@ def _get_existing_tuya_device_ids(hass: HomeAssistant) -> set:
                     existing_ids.add(str(device_id).lower())
     
     return existing_ids
+
+
+def _get_entry_value(config_entry: config_entries.ConfigEntry, key: str, default: Any = None) -> Any:
+    """Get a config value preferring options over data."""
+    if key in config_entry.options:
+        return config_entry.options.get(key, default)
+    return config_entry.data.get(key, default)
 
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -302,7 +321,13 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 if not self._discovered_devices:
                     return self.async_abort(reason="no_devices")
                 
-            except Exception as err:
+            except TuyaDatacenterMismatchError as err:
+                _LOGGER.exception("Error discovering devices: %s", err)
+                return self.async_abort(reason="wrong_datacenter")
+            except TuyaSubscriptionExpiredError as err:
+                _LOGGER.exception("Error discovering devices: %s", err)
+                return self.async_abort(reason="subscription_expired")
+            except (TuyaDiscoveryError, TuyaConnectionError) as err:
                 _LOGGER.exception("Error discovering devices: %s", err)
                 return self.async_abort(reason="discovery_failed")
         
@@ -454,6 +479,12 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 self._region,
             )
             await client.get_access_token()
+        except TuyaAuthError as err:
+            raise InvalidAuth from err
+        except TuyaConnectionError as err:
+            raise CannotConnect from err
+        except TuyaDiscoveryError as err:
+            raise CannotConnect from err
         except ValueError as err:
             if "invalid" in str(err).lower() or "auth" in str(err).lower():
                 raise InvalidAuth from err
@@ -468,14 +499,15 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         config_entry: config_entries.ConfigEntry,
     ) -> "OptionsFlowHandler":
         """Get the options flow for this handler."""
-        return OptionsFlowHandler()
+        return OptionsFlowHandler(config_entry)
 
 
-class OptionsFlowHandler(config_entries.OptionsFlow):
+class OptionsFlowHandler(config_entries.OptionsFlowWithReload):
     """Handle options flow for Tuya Unsupported Sensors."""
 
-    def __init__(self) -> None:
+    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         """Initialize options flow."""
+        super().__init__(config_entry)
         self._discovered_devices: Optional[list] = None
 
     async def async_step_init(
@@ -494,7 +526,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             data_schema=vol.Schema(
                 {
                     vol.Required("Choose", default="devices"): vol.In({
-                        "devices": "Update Devices",
+                        "devices": "Add device(s)",
                         "interval": "Update Interval",
                     }),
                 }
@@ -521,8 +553,48 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 if not self._discovered_devices:
                     return self.async_abort(reason="no_devices")
                 
-            except Exception as err:
+            except TuyaDatacenterMismatchError as err:
                 _LOGGER.exception("Error discovering devices: %s", err)
+                probe_result = await get_discovery_probe_result(
+                    self.hass,
+                    self.config_entry.entry_id,
+                    client_id,
+                    client_secret,
+                    region,
+                )
+                create_discovery_issue(
+                    self.hass, self.config_entry.entry_id, str(err), probe_result=probe_result
+                )
+                return self.async_abort(reason="wrong_datacenter")
+            except TuyaSubscriptionExpiredError as err:
+                _LOGGER.exception("Error discovering devices: %s", err)
+                probe_result = await get_discovery_probe_result(
+                    self.hass,
+                    self.config_entry.entry_id,
+                    client_id,
+                    client_secret,
+                    region,
+                )
+                create_discovery_issue(
+                    self.hass, self.config_entry.entry_id, str(err), probe_result=probe_result
+                )
+                return self.async_abort(reason="subscription_expired")
+            except TuyaAuthError as err:
+                _LOGGER.exception("Error discovering devices: %s", err)
+                create_auth_issue(self.hass, self.config_entry.entry_id, str(err))
+                return self.async_abort(reason="invalid_auth")
+            except (TuyaDiscoveryError, TuyaConnectionError) as err:
+                _LOGGER.exception("Error discovering devices: %s", err)
+                probe_result = await get_discovery_probe_result(
+                    self.hass,
+                    self.config_entry.entry_id,
+                    client_id,
+                    client_secret,
+                    region,
+                )
+                create_discovery_issue(
+                    self.hass, self.config_entry.entry_id, str(err), probe_result=probe_result
+                )
                 return self.async_abort(reason="discovery_failed")
         
         return await self.async_step_select_devices()
@@ -532,32 +604,36 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
     ) -> FlowResult:
         """Handle device selection step."""
         errors: Dict[str, str] = {}
-        current_devices = self.config_entry.data.get(CONF_DEVICES, [])
+        current_devices = list(_get_entry_value(self.config_entry, CONF_DEVICES, []))
         
         if user_input is not None:
-            selected_devices = user_input.get(CONF_DEVICES, [])
+            selected_devices = list(user_input.get(CONF_DEVICES, []))
             
             if not selected_devices:
-                errors["base"] = "no_devices_selected"
+                errors["base"] = "no_new_devices_selected"
             else:
-                if len(selected_devices) > TRIAL_MAX_DEVICES:
-                    errors["base"] = f"Device count ({len(selected_devices)}) exceeds IOT CORE TRIAL PLAN limit of {TRIAL_MAX_DEVICES} devices"
+                merged_devices = list(dict.fromkeys(current_devices + selected_devices))
+                if len(merged_devices) > TRIAL_MAX_DEVICES:
+                    errors["base"] = f"Device count ({len(merged_devices)}) exceeds IOT CORE TRIAL PLAN limit of {TRIAL_MAX_DEVICES} devices"
                 else:
-                    # Ensure selected_devices is a list
-                    if not isinstance(selected_devices, list):
-                        selected_devices = list(selected_devices) if selected_devices else []
-                    
-                    # Create new data dict with all required fields from current entry
+                    # Keep data and options in sync for backward compatibility and auto-reload.
                     new_data = {
                         CONF_CLIENT_ID: self.config_entry.data[CONF_CLIENT_ID],
                         CONF_CLIENT_SECRET: self.config_entry.data[CONF_CLIENT_SECRET],
                         CONF_REGION: self.config_entry.data[CONF_REGION],
-                        CONF_DEVICES: selected_devices,
-                        CONF_UPDATE_INTERVAL: self.config_entry.data.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL),
+                        CONF_DEVICES: merged_devices,
+                        CONF_UPDATE_INTERVAL: _get_entry_value(self.config_entry, CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL),
                     }
-                    
-                    # Update config entry
-                    await self.hass.config_entries.async_update_entry(self.config_entry, data=new_data)
+                    new_options = dict(self.config_entry.options)
+                    new_options[CONF_DEVICES] = merged_devices
+                    new_options[CONF_UPDATE_INTERVAL] = _get_entry_value(
+                        self.config_entry, CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL
+                    )
+                    self.hass.config_entries.async_update_entry(
+                        self.config_entry,
+                        data=new_data,
+                        options=new_options,
+                    )
                     return self.async_create_entry(title="", data={})
         
         # Get device IDs already added via other Tuya integrations
@@ -578,12 +654,16 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 device_id.lower() in existing_device_ids
             )
             
+            is_currently_selected = device_id in current_devices
             device_info = {
                 "id": device_id,
                 "name": device_name,
                 "is_added": is_added,
+                "is_currently_selected": is_currently_selected,
             }
             
+            if is_currently_selected:
+                continue
             if is_added:
                 added_devices.append(device_info)
             else:
@@ -604,12 +684,14 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             {
                 vol.Required(
                     CONF_DEVICES,
-                    default=current_devices,
+                    default=[],
                 ): cv.multi_select(device_options),
             }
         )
         
-        info_text = "We recommend selecting only devices that aren't already added via other Tuya integrations."
+        info_text = (
+            "Select only new devices to add. To remove devices, use the relevant device's 3-dot menu and choose Delete."
+        )
         if added_devices:
             info_text += f" {len(unadded_devices)} device(s) not yet added, {len(added_devices)} already added."
         
@@ -636,31 +718,37 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     if update_interval < MIN_UPDATE_INTERVAL or update_interval > MAX_UPDATE_INTERVAL:
                         errors[CONF_UPDATE_INTERVAL] = f"Must be between {MIN_UPDATE_INTERVAL} and {MAX_UPDATE_INTERVAL} seconds"
                     else:
-                        num_devices = len(self.config_entry.data.get(CONF_DEVICES, []))
+                        num_devices = len(_get_entry_value(self.config_entry, CONF_DEVICES, []))
                         exceeds_limits, warning_msg = _check_trial_limits(num_devices, update_interval)
                         if exceeds_limits:
                             errors[CONF_UPDATE_INTERVAL] = warning_msg
                         else:
-                            # Create new data dict with all required fields from current entry
+                            current_devices = _get_entry_value(self.config_entry, CONF_DEVICES, [])
                             new_data = {
                                 CONF_CLIENT_ID: self.config_entry.data[CONF_CLIENT_ID],
                                 CONF_CLIENT_SECRET: self.config_entry.data[CONF_CLIENT_SECRET],
                                 CONF_REGION: self.config_entry.data[CONF_REGION],
-                                CONF_DEVICES: self.config_entry.data[CONF_DEVICES],
+                                CONF_DEVICES: current_devices,
                                 CONF_UPDATE_INTERVAL: update_interval,
                             }
-                            
-                            # Update config entry
-                            await self.hass.config_entries.async_update_entry(self.config_entry, data=new_data)
+                            new_options = dict(self.config_entry.options)
+                            new_options[CONF_DEVICES] = current_devices
+                            new_options[CONF_UPDATE_INTERVAL] = update_interval
+                            self.hass.config_entries.async_update_entry(
+                                self.config_entry,
+                                data=new_data,
+                                options=new_options,
+                            )
                             return self.async_create_entry(title="", data={})
                 except (ValueError, TypeError):
                     errors[CONF_UPDATE_INTERVAL] = "Must be a valid number"
         
-        current_interval = self.config_entry.data.get(
+        current_interval = _get_entry_value(
+            self.config_entry,
             CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL
         )
         
-        num_devices = len(self.config_entry.data.get(CONF_DEVICES, []))
+        num_devices = len(_get_entry_value(self.config_entry, CONF_DEVICES, []))
         exceeds_limits, warning_msg = _check_trial_limits(num_devices, current_interval)
         
         data_schema = vol.Schema(

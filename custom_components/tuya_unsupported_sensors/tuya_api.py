@@ -18,8 +18,45 @@ from .const import (
     MODEL_URL,
     REGIONS,
 )
+from .exceptions import (
+    TuyaAuthError,
+    TuyaConnectionError,
+    TuyaDataError,
+    TuyaDatacenterMismatchError,
+    TuyaDiscoveryError,
+    TuyaSubscriptionExpiredError,
+)
 
 _LOGGER = logging.getLogger(__name__)
+
+SUBSCRIPTION_ERROR_MARKERS = (
+    "subscription to cloud development plan has expired",
+    "cloud development plan has expired",
+    "no permissions",
+    "subscription",
+    "expired",
+)
+
+DATACENTER_ERROR_MARKERS = (
+    "region",
+    "datacenter",
+    "data center",
+    "country mismatch",
+    "not in this region",
+    "endpoint",
+)
+
+
+def _is_subscription_error(message: str) -> bool:
+    """Return True if message looks like a subscription expiry/permission error."""
+    normalized = (message or "").lower()
+    return any(marker in normalized for marker in SUBSCRIPTION_ERROR_MARKERS)
+
+
+def _is_datacenter_error(message: str) -> bool:
+    """Return True if message looks like a region/datacenter mismatch error."""
+    normalized = (message or "").lower()
+    return any(marker in normalized for marker in DATACENTER_ERROR_MARKERS)
 
 
 class TuyaAPIClient:
@@ -37,7 +74,7 @@ class TuyaAPIClient:
         self._client_secret = client_secret
         
         if region not in REGIONS:
-            raise ValueError(f"Invalid region: {region}. Must be one of {list(REGIONS.keys())}")
+            raise TuyaDataError(f"Invalid region: {region}. Must be one of {list(REGIONS.keys())}")
         
         self._region = region
         self._base_url = REGIONS[region]
@@ -124,8 +161,7 @@ class TuyaAPIClient:
             Tuple of (response object, response body as string).
             
         Raises:
-            aiohttp.ClientError: For HTTP/client errors.
-            asyncio.TimeoutError: For timeout errors.
+            TuyaConnectionError: For HTTP/client or timeout errors.
         """
         timeout = aiohttp.ClientTimeout(total=10)
         
@@ -143,10 +179,10 @@ class TuyaAPIClient:
                     return response, response_text
             except aiohttp.ClientError as error:
                 _LOGGER.error("HTTP request failed: %s", error)
-                raise
+                raise TuyaConnectionError(str(error)) from error
             except asyncio.TimeoutError as error:
                 _LOGGER.error("Request timeout: %s", error)
-                raise
+                raise TuyaConnectionError(str(error)) from error
 
     async def get_access_token(self) -> str:
         """Get access token, refreshing if necessary.
@@ -158,8 +194,9 @@ class TuyaAPIClient:
             Access token string.
             
         Raises:
-            aiohttp.ClientError: If token request fails.
-            ValueError: If API response is invalid.
+            TuyaConnectionError: If token request fails.
+            TuyaAuthError: If auth is rejected by API.
+            TuyaDataError: If API response is invalid.
         """
         now = datetime.now()
         
@@ -191,8 +228,15 @@ class TuyaAPIClient:
         
         try:
             json_result = json.loads(response_text)
+            if "success" in json_result and not json_result.get("success"):
+                error_msg = json_result.get("msg", "Unknown error")
+                if _is_subscription_error(error_msg):
+                    raise TuyaSubscriptionExpiredError(f"Tuya API auth error: {error_msg}")
+                if _is_datacenter_error(error_msg):
+                    raise TuyaDatacenterMismatchError(f"Tuya API auth error: {error_msg}")
+                raise TuyaAuthError(f"Tuya API auth error: {error_msg}")
             if "result" not in json_result:
-                raise ValueError(f"Invalid API response: {json_result}")
+                raise TuyaDataError(f"Invalid API response: {json_result}")
             
             result = json_result["result"]
             access_token = result.get("access_token")
@@ -200,7 +244,7 @@ class TuyaAPIClient:
             uid = result.get("uid")
             
             if not access_token:
-                raise ValueError(f"Access token not found in response: {result}")
+                raise TuyaAuthError(f"Access token not found in response: {result}")
             
             self._access_token = access_token
             self._token_expires_at = now + timedelta(seconds=expires_in)
@@ -217,7 +261,25 @@ class TuyaAPIClient:
             
         except json.JSONDecodeError as error:
             _LOGGER.error("Failed to parse token response: %s", error)
-            raise ValueError(f"Invalid JSON response: {response_text}") from error
+            raise TuyaDataError(f"Invalid JSON response: {response_text}") from error
+
+    @staticmethod
+    def _classify_discovery_error(error_msg: str, error_code: Any) -> TuyaDiscoveryError:
+        """Classify a discovery error response into a typed exception."""
+        normalized = (error_msg or "").lower()
+        message = f"Tuya API error: {error_msg} (code: {error_code})"
+
+        # Explicit subscription/trial expiry signals from Tuya responses.
+        if _is_subscription_error(normalized):
+            return TuyaSubscriptionExpiredError(message)
+
+        # Region/datacenter mismatch signals.
+        if _is_datacenter_error(normalized):
+            return TuyaDatacenterMismatchError(message)
+
+        if error_code == 1010 or "token" in normalized or "auth" in normalized:
+            return TuyaAuthError(message)
+        return TuyaDiscoveryError(message)
 
     async def discover_devices(self) -> List[Dict[str, Any]]:
         """Discover all devices associated with the API credentials.
@@ -233,8 +295,8 @@ class TuyaAPIClient:
             - Other device metadata
             
         Raises:
-            aiohttp.ClientError: If API request fails.
-            ValueError: If API response is invalid.
+            TuyaConnectionError: If API request fails.
+            TuyaDiscoveryError: If discovery fails.
         """
         all_devices: List[Dict[str, Any]] = []
         last_id: Optional[str] = None
@@ -297,7 +359,7 @@ class TuyaAPIClient:
                     else:
                         error_msg = json_result.get("msg", "Unknown error")
                         error_code = json_result.get("code", "unknown")
-                        raise ValueError(f"Tuya API error after token refresh: {error_msg} (code: {error_code})")
+                        raise self._classify_discovery_error(error_msg, error_code)
                 
                 # Reset retry count on successful request
                 retry_count = 0
@@ -307,17 +369,17 @@ class TuyaAPIClient:
                     error_msg = json_result.get("msg", "Unknown error")
                     error_code = json_result.get("code", "unknown")
                     _LOGGER.error("Tuya API error: %s (code: %s)", error_msg, error_code)
-                    raise ValueError(f"Tuya API error: {error_msg} (code: {error_code})")
+                    raise self._classify_discovery_error(error_msg, error_code)
                 
                 if "result" not in json_result:
                     _LOGGER.error("Invalid API response structure: %s", json_result)
-                    raise ValueError(f"Invalid API response: {json_result}")
+                    raise TuyaDataError(f"Invalid API response: {json_result}")
                 
                 devices = json_result["result"]
                 
                 if not isinstance(devices, list):
                     _LOGGER.error("Expected list of devices, got %s: %s", type(devices), devices)
-                    raise ValueError(f"Expected list of devices, got: {type(devices)}")
+                    raise TuyaDataError(f"Expected list of devices, got: {type(devices)}")
                 
                 if not devices:
                     # No more devices to fetch
@@ -352,7 +414,7 @@ class TuyaAPIClient:
                 
             except json.JSONDecodeError as error:
                 _LOGGER.error("Failed to parse device list response. Response text: %s", response_text)
-                raise ValueError(f"Invalid JSON response: {response_text}") from error
+                raise TuyaDataError(f"Invalid JSON response: {response_text}") from error
         
         _LOGGER.debug("Discovered %d total devices", len(all_devices))
         return all_devices
@@ -368,11 +430,11 @@ class TuyaAPIClient:
             Example: {"temp": 25.5, "humidity": 60, "battery": 85}
             
         Raises:
-            aiohttp.ClientError: If API request fails.
-            ValueError: If API response is invalid or device_id is empty.
+            TuyaConnectionError: If API request fails.
+            TuyaIntegrationError: If API response is invalid or auth fails.
         """
         if not device_id:
-            raise ValueError("device_id cannot be empty")
+            raise TuyaDataError("device_id cannot be empty")
         
         # Retry once if token is invalid
         for attempt in range(2):
@@ -428,24 +490,27 @@ class TuyaAPIClient:
                             "REASON: Token refresh may have failed or API credentials are invalid. "
                             "Check your API client_id and client_secret in integration settings."
                         )
-                        raise ValueError(f"Tuya API error after token refresh: {error_msg} (code: {error_code})")
+                        raise TuyaAuthError(f"Tuya API error after token refresh: {error_msg} (code: {error_code})")
+                        
                 
                 # Check for other API errors
                 if "success" in json_result and not json_result.get("success"):
                     error_msg = json_result.get("msg", "Unknown error")
                     error_code = json_result.get("code", "unknown")
-                    raise ValueError(f"Tuya API error: {error_msg} (code: {error_code})")
+                    if error_code == 1010 or "token" in error_msg.lower() or "auth" in error_msg.lower():
+                        raise TuyaAuthError(f"Tuya API error: {error_msg} (code: {error_code})")
+                    raise TuyaDataError(f"Tuya API error: {error_msg} (code: {error_code})")
                 
                 if "result" not in json_result:
-                    raise ValueError(f"Invalid API response: {json_result}")
+                    raise TuyaDataError(f"Invalid API response: {json_result}")
                 
                 result = json_result["result"]
                 if "properties" not in result:
-                    raise ValueError(f"Properties not found in response: {result}")
+                    raise TuyaDataError(f"Properties not found in response: {result}")
                 
                 properties = result["properties"]
                 if not isinstance(properties, list):
-                    raise ValueError(f"Expected list of properties, got: {type(properties)}")
+                    raise TuyaDataError(f"Expected list of properties, got: {type(properties)}")
                 
                 output = {prop.get("code"): prop.get("value") for prop in properties if "code" in prop}
                 
@@ -454,7 +519,7 @@ class TuyaAPIClient:
                 
             except json.JSONDecodeError as error:
                 _LOGGER.error("Failed to parse device properties response: %s", error)
-                raise ValueError(f"Invalid JSON response: {response_text}") from error
+                raise TuyaDataError(f"Invalid JSON response: {response_text}") from error
 
     async def get_device_model(self, device_id: str) -> Dict[str, Any]:
         """Get device model/schema for a specific device.
@@ -466,11 +531,11 @@ class TuyaAPIClient:
             Dictionary containing the model response.
             
         Raises:
-            aiohttp.ClientError: If API request fails.
-            ValueError: If API response is invalid or device_id is empty.
+            TuyaConnectionError: If API request fails.
+            TuyaDataError: If API response is invalid or device_id is empty.
         """
         if not device_id:
-            raise ValueError("device_id cannot be empty")
+            raise TuyaDataError("device_id cannot be empty")
         
         access_token = await self.get_access_token()
         
@@ -497,13 +562,13 @@ class TuyaAPIClient:
         try:
             json_result = json.loads(response_text)
             if "result" not in json_result:
-                raise ValueError(f"Invalid API response: {json_result}")
+                raise TuyaDataError(f"Invalid API response: {json_result}")
             
             return json_result
             
         except json.JSONDecodeError as error:
             _LOGGER.error("Failed to parse device model response: %s", error)
-            raise ValueError(f"Invalid JSON response: {response_text}") from error
+            raise TuyaDataError(f"Invalid JSON response: {response_text}") from error
 
     def _extract_property_scales(self, model_response: Dict[str, Any]) -> Dict[str, int]:
         """Extract scale information for each property from the model response.
@@ -581,4 +646,55 @@ class TuyaAPIClient:
             return None
         
         # Should never reach here, but just in case
-        raise ValueError("Failed to get device properties after retry")
+        raise TuyaDataError("Failed to get device properties after retry")
+
+
+async def probe_datacenters(client_id: str, client_secret: str) -> Dict[str, Any]:
+    """Probe all known Tuya datacenters and return classification details.
+
+    This mirrors the manual Datacenter_test.py workflow inside the integration.
+    """
+    results: List[Dict[str, Any]] = []
+    successful_regions: List[str] = []
+    subscription_expired_regions: List[str] = []
+    datacenter_mismatch_regions: List[str] = []
+    auth_error_regions: List[str] = []
+
+    for region in REGIONS:
+        entry: Dict[str, Any] = {
+            "region": region,
+            "status": "unknown",
+            "error": "",
+        }
+        try:
+            client = TuyaAPIClient(client_id, client_secret, region)
+            await client.discover_devices()
+            entry["status"] = "success"
+            successful_regions.append(region)
+        except TuyaSubscriptionExpiredError as err:
+            entry["status"] = "subscription_expired"
+            entry["error"] = str(err)
+            subscription_expired_regions.append(region)
+        except TuyaDatacenterMismatchError as err:
+            entry["status"] = "datacenter_mismatch"
+            entry["error"] = str(err)
+            datacenter_mismatch_regions.append(region)
+        except TuyaAuthError as err:
+            entry["status"] = "auth_error"
+            entry["error"] = str(err)
+            auth_error_regions.append(region)
+        except TuyaConnectionError as err:
+            entry["status"] = "connection_error"
+            entry["error"] = str(err)
+        except Exception as err:  # Defensive catch for unknown response formats
+            entry["status"] = "error"
+            entry["error"] = str(err)
+        results.append(entry)
+
+    return {
+        "results": results,
+        "successful_regions": successful_regions,
+        "subscription_expired_regions": subscription_expired_regions,
+        "datacenter_mismatch_regions": datacenter_mismatch_regions,
+        "auth_error_regions": auth_error_regions,
+    }
