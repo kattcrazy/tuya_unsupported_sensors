@@ -57,6 +57,22 @@ def _get_entry_value(entry: ConfigEntry, key: str, default: Any = None) -> Any:
     return entry.data.get(key, default)
 
 
+def _normalize_device_ids(device_ids: list[str]) -> list[str]:
+    """Normalize and deduplicate device IDs (case-insensitive)."""
+    normalized: list[str] = []
+    seen: set[str] = set()
+    for device_id in device_ids:
+        value = str(device_id).strip()
+        if not value:
+            continue
+        key = value.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        normalized.append(value)
+    return normalized
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Tuya Unsupported Sensors from a config entry."""
     hass.data.setdefault(DOMAIN, {})
@@ -64,8 +80,28 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     client_id = entry.data[CONF_CLIENT_ID]
     client_secret = entry.data[CONF_CLIENT_SECRET]
     region = entry.data[CONF_REGION]
-    device_ids = _get_entry_value(entry, CONF_DEVICES, [])
+    raw_device_ids = list(_get_entry_value(entry, CONF_DEVICES, []))
+    device_ids = _normalize_device_ids(raw_device_ids)
     update_interval = _get_entry_value(entry, CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL)
+
+    if device_ids != raw_device_ids:
+        _LOGGER.debug(
+            "Normalizing configured device IDs for entry %s from %s to %s",
+            entry.entry_id,
+            raw_device_ids,
+            device_ids,
+        )
+        new_data = {
+            CONF_CLIENT_ID: entry.data[CONF_CLIENT_ID],
+            CONF_CLIENT_SECRET: entry.data[CONF_CLIENT_SECRET],
+            CONF_REGION: entry.data[CONF_REGION],
+            CONF_DEVICES: device_ids,
+            CONF_UPDATE_INTERVAL: update_interval,
+        }
+        new_options = dict(entry.options)
+        new_options[CONF_DEVICES] = device_ids
+        new_options[CONF_UPDATE_INTERVAL] = update_interval
+        hass.config_entries.async_update_entry(entry, data=new_data, options=new_options)
     
     # Validate update_interval is within allowed range
     if update_interval < MIN_UPDATE_INTERVAL or update_interval > MAX_UPDATE_INTERVAL:

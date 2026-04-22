@@ -228,6 +228,22 @@ def _get_entry_value(config_entry: config_entries.ConfigEntry, key: str, default
     return config_entry.data.get(key, default)
 
 
+def _normalize_device_ids(device_ids: Optional[list]) -> list[str]:
+    """Normalize and deduplicate device IDs (case-insensitive)."""
+    normalized: list[str] = []
+    seen: set[str] = set()
+    for device_id in device_ids or []:
+        value = str(device_id).strip()
+        if not value:
+            continue
+        key = value.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        normalized.append(value)
+    return normalized
+
+
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Tuya Unsupported Sensors."""
 
@@ -340,7 +356,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors: Dict[str, str] = {}
         
         if user_input is not None:
-            selected_devices = user_input.get(CONF_DEVICES, [])
+            selected_devices = _normalize_device_ids(user_input.get(CONF_DEVICES, []))
             
             if not selected_devices:
                 errors["base"] = "no_devices_selected"
@@ -354,7 +370,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # Get device IDs already added via other Tuya integrations
         existing_device_ids = _get_existing_tuya_device_ids(self.hass)
         
-        # Separate devices into already-added and not-added
+        # Separate devices into current, already-added elsewhere, and not-added
+        current_integration_devices = []
         unadded_devices = []
         added_devices = []
         
@@ -603,15 +620,20 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
     ) -> FlowResult:
         """Handle device selection step."""
         errors: Dict[str, str] = {}
-        current_devices = list(_get_entry_value(self.config_entry, CONF_DEVICES, []))
+        current_devices = _normalize_device_ids(list(_get_entry_value(self.config_entry, CONF_DEVICES, [])))
+        current_device_keys = {device_id.lower() for device_id in current_devices}
         
         if user_input is not None:
-            selected_devices = list(user_input.get(CONF_DEVICES, []))
+            selected_devices = _normalize_device_ids(list(user_input.get(CONF_DEVICES, [])))
+            new_devices = [
+                device_id for device_id in selected_devices
+                if device_id.lower() not in current_device_keys
+            ]
             
-            if not selected_devices:
+            if not new_devices:
                 errors["base"] = "no_new_devices_selected"
             else:
-                merged_devices = list(dict.fromkeys(current_devices + selected_devices))
+                merged_devices = _normalize_device_ids(current_devices + new_devices)
                 if len(merged_devices) > TRIAL_MAX_DEVICES:
                     errors["base"] = f"Device count ({len(merged_devices)}) exceeds IOT CORE TRIAL PLAN limit of {TRIAL_MAX_DEVICES} devices"
                 else:
@@ -653,7 +675,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 device_id.lower() in existing_device_ids
             )
             
-            is_currently_selected = device_id in current_devices
+            is_currently_selected = device_id.lower() in current_device_keys
             device_info = {
                 "id": device_id,
                 "name": device_name,
@@ -662,18 +684,22 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             }
             
             if is_currently_selected:
-                continue
-            if is_added:
+                current_integration_devices.append(device_info)
+            elif is_added:
                 added_devices.append(device_info)
             else:
                 unadded_devices.append(device_info)
         
-        # Build device options: unadded first, then added (with indicators)
+        # Build device options: unadded first, then current integration, then added elsewhere.
         device_options = {}
         
         # Add unadded devices first (priority)
         for device in unadded_devices:
             device_options[device["id"]] = device["name"]
+
+        # Show devices already added to this integration.
+        for device in current_integration_devices:
+            device_options[device["id"]] = f"{device['name']} [Already added via this integration]"
         
         # Add already-added devices with indicator
         for device in added_devices:
@@ -691,8 +717,12 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         info_text = (
             "Select only new devices to add. To remove devices, use the relevant device's 3-dot menu and choose Delete."
         )
-        if added_devices:
-            info_text += f" {len(unadded_devices)} device(s) not yet added, {len(added_devices)} already added."
+        if current_integration_devices or added_devices:
+            info_text += (
+                f" {len(unadded_devices)} device(s) not yet added, "
+                f"{len(current_integration_devices)} already added via this integration, "
+                f"{len(added_devices)} already added via another integration."
+            )
         
         return self.async_show_form(
             step_id="select_devices",
