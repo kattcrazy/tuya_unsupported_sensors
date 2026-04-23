@@ -264,10 +264,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Handle the initial step - region selection."""
         if user_input is None:
             region_options = {
-                "us": "US (Western)",
-                "us_east": "US (Eastern)",
-                "eu": "EU (Central)",
-                "eu_west": "EU (Western)",
+                "us": "Western America",
+                "us_east": "Eastern America (Businesses only)",
+                "eu": "Central Europe",
+                "eu_west": "Western Europe (Businesses only)",
                 "cn": "China",
                 "in": "India",
                 "sg": "Singapore",
