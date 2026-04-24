@@ -29,7 +29,7 @@
       "invalid_auth": "Invalid credentials. Please check your Client ID and Client Secret. Note: If your Tuya developer trial expired, you'll need to apply for an extension and wait for it to be renewed.",
       "cannot_connect": "Unable to connect to Tuya API. Please check your region selection and network connection.",
       "unknown": "An unexpected error occurred. Please check the logs for details.",
-      "no_new_devices_selected": "No new devices selected. To delete devices, use the relevant device's 3-dot menu and choose Delete device."
+      "no_new_devices_selected": "No new devices selected. To delete devices, use the relevant device's 3-dot menu and choose Delete."
     },
     "abort": {
       "already_configured": "This integration is already configured.",
@@ -42,7 +42,7 @@
   },
   "options": {
     "error": {
-      "no_new_devices_selected": "No new devices selected. To delete devices, use the relevant device's 3-dot menu and choose Delete device.",
+      "no_new_devices_selected": "No new devices selected. To delete devices, use the relevant device's 3-dot menu and choose Delete.",
       "invalid_selection": "Please choose a valid settings action.",
       "unknown": "An unexpected error occurred while opening integration settings."
     },
