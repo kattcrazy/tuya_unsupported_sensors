@@ -9,7 +9,7 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -250,45 +250,86 @@ async def async_setup_entry(
     discovered_devices = hass.data[DOMAIN][entry.entry_id].get("devices", {})
     entity_registry = er.async_get(hass)
     device_registry = dr.async_get(hass)
-    
-    entities = []
-    
-    sensor_codes = set()
+
+    sensor_codes: set = set()
     for codes in SENSOR_PROPERTY_CODES.values():
         sensor_codes.update(codes)
-    
-    for device_id in device_ids:
-        device_info = discovered_devices.get(device_id, {})
-        # Use Tuya customName first, then name, then fallback
-        device_name = device_info.get("customName") or device_info.get("name", f"Device {device_id}")
-        device_model = device_info.get("product_name", "Unknown")
-        
-        device_data = coordinator.data.get(device_id, {})
-        
-        _LOGGER.debug("Processing device %s (%s): %s", device_id, device_name, device_data)
-        
-        for property_code, value in device_data.items():
-            property_code_lower = property_code.lower()
-            
-            # Log battery-related properties for debugging
-            if "battery" in property_code_lower:
-                _LOGGER.debug(
-                    "Found battery property: code=%s, value=%s (type=%s), matches sensor codes=%s",
-                    property_code,
-                    value,
-                    type(value).__name__,
-                    property_code_lower in sensor_codes
-                )
-            
-            # Check if this is a sensor property code
-            if property_code_lower in sensor_codes:
-                # For battery sensors, only set device_class if value is numeric
-                # Home Assistant requires numeric values for battery device_class
-                device_class = _get_sensor_device_class(property_code)
-                if device_class == SensorDeviceClass.BATTERY and not _is_numeric_value(value):
-                    # Don't set device_class for text battery values
+
+    # Track (device_id, property_code_lower) pairs that already have an entity.
+    # This lets the coordinator listener below be called on every update without
+    # creating duplicate entities.
+    created_entities: set = set()
+
+    @callback
+    def _create_new_entities() -> None:
+        """Create sensor entities for any property codes not yet tracked.
+
+        Called once at setup and on each coordinator update so that
+        battery-powered devices that are asleep at HA startup still get their
+        entities created the first time they wake up and report state.
+        """
+        entities = []
+
+        for device_id in device_ids:
+            device_info = discovered_devices.get(device_id, {})
+            device_name = device_info.get("customName") or device_info.get("name", f"Device {device_id}")
+            device_model = device_info.get("product_name", "Unknown")
+
+            device_data = coordinator.data.get(device_id, {})
+
+            _LOGGER.debug("Processing device %s (%s): %s", device_id, device_name, device_data)
+
+            for property_code, value in device_data.items():
+                property_code_lower = property_code.lower()
+                key = (device_id, property_code_lower)
+                if key in created_entities:
+                    continue
+
+                # Log battery-related properties for debugging
+                if "battery" in property_code_lower:
+                    _LOGGER.debug(
+                        "Found battery property: code=%s, value=%s (type=%s), matches sensor codes=%s",
+                        property_code,
+                        value,
+                        type(value).__name__,
+                        property_code_lower in sensor_codes
+                    )
+
+                if property_code_lower in sensor_codes:
+                    device_class = _get_sensor_device_class(property_code)
+                    if device_class == SensorDeviceClass.BATTERY and not _is_numeric_value(value):
+                        unique_id = _resolve_sensor_unique_id(
+                            entity_registry, device_registry, entry.entry_id,
+                            device_id, device_name, property_code
+                        )
+                        entity = ExtraTuyaSensor(
+                            coordinator=coordinator,
+                            device_id=device_id,
+                            device_name=device_name,
+                            device_model=device_model,
+                            property_code=property_code,
+                            unique_id=unique_id,
+                            force_device_class=None,
+                        )
+                    else:
+                        unique_id = _resolve_sensor_unique_id(
+                            entity_registry, device_registry, entry.entry_id,
+                            device_id, device_name, property_code
+                        )
+                        entity = ExtraTuyaSensor(
+                            coordinator=coordinator,
+                            device_id=device_id,
+                            device_name=device_name,
+                            device_model=device_model,
+                            property_code=property_code,
+                            unique_id=unique_id,
+                        )
+                    created_entities.add(key)
+                    entities.append(entity)
+                elif _is_numeric_value(value):
                     unique_id = _resolve_sensor_unique_id(
-                        entity_registry, device_registry, entry.entry_id, device_id, device_name, property_code
+                        entity_registry, device_registry, entry.entry_id,
+                        device_id, device_name, property_code
                     )
                     entity = ExtraTuyaSensor(
                         coordinator=coordinator,
@@ -297,36 +338,20 @@ async def async_setup_entry(
                         device_model=device_model,
                         property_code=property_code,
                         unique_id=unique_id,
-                        force_device_class=None,  # Override device_class
                     )
-                else:
-                    unique_id = _resolve_sensor_unique_id(
-                        entity_registry, device_registry, entry.entry_id, device_id, device_name, property_code
-                    )
-                    entity = ExtraTuyaSensor(
-                        coordinator=coordinator,
-                        device_id=device_id,
-                        device_name=device_name,
-                        device_model=device_model,
-                        property_code=property_code,
-                        unique_id=unique_id,
-                    )
-                entities.append(entity)
-            elif _is_numeric_value(value):
-                unique_id = _resolve_sensor_unique_id(
-                    entity_registry, device_registry, entry.entry_id, device_id, device_name, property_code
-                )
-                entity = ExtraTuyaSensor(
-                    coordinator=coordinator,
-                    device_id=device_id,
-                    device_name=device_name,
-                    device_model=device_model,
-                    property_code=property_code,
-                    unique_id=unique_id,
-                )
-                entities.append(entity)
-    
-    async_add_entities(entities)
+                    created_entities.add(key)
+                    entities.append(entity)
+
+        if entities:
+            async_add_entities(entities)
+
+    # Run immediately for devices that already have shadow data in the coordinator.
+    _create_new_entities()
+
+    # Re-run on every coordinator refresh so that sleeping battery-powered devices
+    # get their entities created the first time they wake up and report properties
+    # that were absent during initial setup.
+    entry.async_on_unload(coordinator.async_add_listener(_create_new_entities))
 
 
 class ExtraTuyaSensor(CoordinatorEntity, SensorEntity):
