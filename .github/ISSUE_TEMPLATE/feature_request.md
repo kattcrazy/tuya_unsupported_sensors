@@ -2,7 +2,7 @@
 name: Feature request
 about: Suggest an idea for this intergration
 title: ''
-labels: enhancement
+labels: ''
 assignees: ''
 
 ---
