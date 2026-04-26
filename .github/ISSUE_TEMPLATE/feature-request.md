@@ -1,8 +1,8 @@
 ---
-name: Feature request
+name: Feature Request
 about: Suggest an idea for this intergration
 title: ''
-labels: ''
+labels: enhancement/new device
 assignees: ''
 
 ---
