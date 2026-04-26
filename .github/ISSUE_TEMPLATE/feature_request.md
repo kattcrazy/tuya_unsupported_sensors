@@ -9,7 +9,3 @@ assignees: ''
 
 **Request**
 Write your idea here
-
-**Type of request**
-[] New device support
-[] Other
