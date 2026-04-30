@@ -230,9 +230,9 @@ def _resolve_sensor_unique_id(
     stable_unique_id = f"{slugify(device_id)}_{slugify(property_code)}"
 
     # Prefer an existing unique_id to avoid creating duplicate entities after upgrades.
-    if er.async_get_entity_id("sensor", DOMAIN, legacy_unique_id):
+    if entity_registry.async_get_entity_id("sensor", DOMAIN, legacy_unique_id):
         return legacy_unique_id
-    if er.async_get_entity_id("sensor", DOMAIN, stable_unique_id):
+    if entity_registry.async_get_entity_id("sensor", DOMAIN, stable_unique_id):
         return stable_unique_id
     return stable_unique_id
 
