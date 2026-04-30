@@ -56,18 +56,20 @@ SENSOR_PROPERTY_CODES = {
     # Smart lock telemetry/status
     "lock_status": ["alarm_lock", "beep_volume"],
     # Electric meter (ZX-7500 and similar)
-    "voltage": ["voltagea", "voltageb", "voltagec"],
-    "current": ["currenta", "currentb", "currentc", "current"],
-    "power": ["activepowera", "activepowerb", "activepowerc", "activepower"],
+    "voltage": ["voltagea", "voltageb", "voltagec", "voltage_a"],
+    "current": ["currenta", "currentb", "currentc", "current", "current_a", "current_b"],
+    "power": ["activepowera", "activepowerb", "activepowerc", "activepower", "power_a", "power_b", "total_power"],
     "energy": [
-        "energyconsumeda", "energyconsumedb", "energyconsumedc", "energyconsumed"
+        "energyconsumeda", "energyconsumedb", "energyconsumedc", "energyconsumed",
+        "energy_forword_a", "energy_reverse_a", "energy_forword_b", "energy_reserse_b",
+        "forward_energy_total", "reverse_energy_total"
     ],
-    "frequency": ["frequency"],
+    "frequency": ["frequency", "freq"],
     "reactive_power": [
         "reactivepowera", "reactivepowerb", "reactivepowerc", "reactivepower"
     ],
-    "power_factor": ["powerfactora", "powerfactorb", "powerfactorc"],
-    "device_status": ["devicestatus"],
+    "power_factor": ["powerfactora", "powerfactorb", "powerfactorc", "power_factor", "power_factor_b"],
+    "device_status": ["devicestatus", "direction_a", "direction_b"],
     "voltage_phase_seq": ["voltage_phase_seq"],
 }
 
@@ -86,14 +88,20 @@ PROPERTY_UNIT_MAP = {
     "voltagea": "V",
     "voltageb": "V",
     "voltagec": "V",
+    "voltage_a": "V",
     "currenta": "A",
     "currentb": "A",
     "currentc": "A",
     "current": "A",
+    "current_a": "A",
+    "current_b": "A",
     "activepowera": "W",
     "activepowerb": "W",
     "activepowerc": "W",
     "activepower": "W",
+    "power_a": "W",
+    "power_b": "W",
+    "total_power": "W",
     "reactivepowera": "var",
     "reactivepowerb": "var",
     "reactivepowerc": "var",
@@ -105,7 +113,16 @@ PROPERTY_UNIT_MAP = {
     "energyconsumedb": "kWh",
     "energyconsumedc": "kWh",
     "energyconsumed": "kWh",
+    "energy_forword_a": "kWh",
+    "energy_reverse_a": "kWh",
+    "energy_forword_b": "kWh",
+    "energy_reserse_b": "kWh",
+    "forward_energy_total": "kWh",
+    "reverse_energy_total": "kWh",
     "frequency": "Hz",
+    "freq": "Hz",
+    "power_factor": "",
+    "power_factor_b": "",
 }
 
 BINARY_SENSOR_PROPERTY_CODES = {
