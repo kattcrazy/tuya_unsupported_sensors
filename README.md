@@ -6,15 +6,14 @@ An intergration that creates devices & entites for sensors otherwise unsupported
 |-----------|--------------------------|
 | ![Unsupported](images/Unsupported.png) | ![Supported](images/Supported.png) |
 
-### Supported sensors/entities 
-- Temperature
-- Humidity
-- Battery
-- Door/contact
+### Supported sensor mappings
+- Temperature & Humidity (001TH0202)
+- Door/contact (001D02CB3S)
 - PIR motion
 - Presence
 - Electric meter
 - Smart lock
+- Wifi Dual Meter (ebbbe5b6045c36c862js1e)
 
 ### Unsupported
 Anything that requires control (e.g: lights) will not be added, this is for read-only sensors as manging controls far exceeds my/AI's skill level!
