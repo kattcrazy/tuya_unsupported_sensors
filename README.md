@@ -27,7 +27,7 @@ If you have a read-only sensor you'd like to have added, you can submit an featu
 
 ## Installation 
 ### HACS (Reccomended)
-1. <a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=kattcrazy&category=intergration&repository=tuya_unsupported_sensors" target="_blank" rel="noreferrer noopener"><img src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Open your Home Assistant instance and open a repository inside the Home Assistant Community Store." /></a>
+1. <a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=kattcrazy&category=intergration&repository=tuya-unsupported-sensors" target="_blank" rel="noreferrer noopener"><img src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Open your Home Assistant instance and open a repository inside the Home Assistant Community Store." /></a>
 2. Press download, then restart Home Assistant
 3. Go to `Settings > Devices & Integrations > Add Integration` and search for Tuya Unsupported Sensors
 4. Select it and fill in the required details (see [Tuya Dev API](https://github.com/kattcrazy/tuya_unsupported_sensors#tuya-developer-api) below)
