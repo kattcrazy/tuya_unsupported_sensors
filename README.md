@@ -27,20 +27,12 @@ If you have a read-only sensor you'd like to have added, you can submit an featu
 
 ## Installation 
 ### HACS (Reccomended)
-1. <a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=kattcrazy&category=intergration&repository=tuya-unsupported-sensors" target="_blank" rel="noreferrer noopener"><img src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Open your Home Assistant instance and open a repository inside the Home Assistant Community Store." /></a>
-2. Press download, then restart Home Assistant
-3. Go to `Settings > Devices & Integrations > Add Integration` and search for Tuya Unsupported Sensors
-4. Select it and fill in the required details (see [Tuya Dev API](https://github.com/kattcrazy/tuya_unsupported_sensors#tuya-developer-api) below)
-5. Choose a refresh interval using the formula `99.69 x Number of Devices = Minimum update interval`
-5. Select your usually unsupported sensors from the list
+
+<a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=kattcrazy&category=intergration&repository=tuya-unsupported-sensors" target="_blank" rel="noreferrer noopener"><img src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Open your Home Assistant instance and open a repository inside the Home Assistant Community Store." /></a>
 
 ### Manual
 1. Download the folder named `tuya_unsupported_sensors` inside `custom_components`
-2. Drag/upload it into your `custom_components` folder inside your Home Assistant folder (for Home Assistant Docker, `custom_components` is in the folder that holds your `configuration.yaml`), and restart Home Assistant
-3. Go to `Settings > Devices & Integrations > Add Integration` and search for Tuya Unsupported Sensors
-4. Select it and fill in the required details (see [Tuya Dev API](https://github.com/kattcrazy/tuya_unsupported_sensors?tab=readme-ov-file#tuya-developer-api) below)
-5. Choose a refresh interval using the formula `99.69 x Number of Devices = Minimum update interval`
-5. Select your usually unsupported sensors from the list
+2. Drag/upload it into your `custom_components` folder inside your Home Assistant folder (for Home Assistant Docker, `custom_components` is inside the folder that holds your `configuration.yaml`), and restart Home Assistant
 
 ## Tuya Developer API
 Follow [this guide](https://github.com/azerty9971/xtend_tuya/blob/v4.2.4/docs/cloud_credentials.md) until step 5 to see how to set up the API credentials
