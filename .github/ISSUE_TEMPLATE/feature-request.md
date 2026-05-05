@@ -1,9 +1,9 @@
 ---
 name: Feature Request
 about: Suggest an idea for this intergration
-title: ''
+title: "[FEATURE]"
 labels: enhancement/new device
-assignees: ''
+assignees: kattcrazy
 
 ---
 

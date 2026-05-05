@@ -1,14 +1,14 @@
 ---
 name: New Device/Datapoints
 about: Request that a device's datapoints be added
-title: ''
+title: "[NEW DPS]"
 labels: enhancement/new device
-assignees: ''
+assignees: kattcrazy
 
 ---
 
-**Device ID**
-<!-- Found in Home Assistant in the device page, under Device Info -->
+**Product ID**
+<!-- Found in Home Assistant in the device page, under Device Info. This is NOT the device id as seen in debug logs. -->
 
 **Datapoints**
 <!--

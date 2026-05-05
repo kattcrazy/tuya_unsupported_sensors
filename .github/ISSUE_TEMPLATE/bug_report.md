@@ -1,9 +1,9 @@
 ---
 name: Bug report
 about: Let me know about a bug
-title: ''
-labels: bug
-assignees: ''
+title: "[BUG]"
+labels: bug, enhancement/new device
+assignees: kattcrazy
 
 ---
 
