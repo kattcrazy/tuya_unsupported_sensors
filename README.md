@@ -5,10 +5,10 @@ This intergration will continue to support already mapped devices from previous 
 ## Tuya Quirks as of 2026.5.0
 With Home Assistant core release 2026.5.0, Tuya quirks now enable users to edit, add, and map datapoints so their device is supported in the core intergration. That means that this custom intergration will be uneeded in the future once all the datapoints have quirks. 
 
-To help with the creation and collection of quirks for public use (🎉), please help out by doing the below instructions (also found in this intergration's README) for any devices that are missing entities in the core Tuya intergration. I will create a Tuya quirk for your device, send it to you for testing, and once it's confirmed to be correct, I will make a pull request for it in [tuya-device-handlers](https://github.com/home-assistant-libs/tuya-device-handlers), where it will hopefully be merged and used in the next core release. Then, you'll be able to use your device using the core intergration!
+To help with the creation and collection of quirks for public use (🎉), please help out by doing the below instructions for any devices that are missing entities in the core Tuya intergration. You can put all the below info in an issue in [tuya-device-handlers](https://github.com/home-assistant-libs/tuya-device-handlers/issues) where some people like myself will help make a quirk. Once you've tested it and confirmed it works, a pull request can be created and hopefully merged to be used in the next core release. Then, you'll be able to use your device using the core intergration!
 
 ### Contribute details for a quirk
-Make an issue (template QUIRK) in the issues tab with the following debugging responses. If you don't include these, I will simply refer you back to this documentation.
+Make an issue (template Feature Request) in the issues tab of [tuya-device-handlers](https://github.com/home-assistant-libs/tuya-device-handlers/issues) with the following debugging responses.
 
 #### Tuya Dev Debug  (don't have an account? see [tutorial](https://github.com/kattcrazy/Tuya-Unsupported-Sensors#tuya-developer-api))
 1. Go to https://platform.tuya.com/ > cloud > project management > open project > devices
@@ -22,11 +22,12 @@ When sharing this, please don't share the request url as it contains sensitive p
 1. Go the the **core** Tuya integration in your installation- **not** this intergration
 2. Navigate to your unsupported device
 3. Click download diagnostics
+4. Paste the diagnostics in the issue (don't upload the file if possible)
 
 ### Testing a quirk
 
 1. Make the folder `<config>/tuya_quirks/` in your Home Assistant directory
-2. Place the file I provide in that location, keeping the name the same 
+2. Place the provided quirk file in that location, keeping the name the same 
 3. Reload the core Tuya intergration
 4. Check your device for entities and confirm if they are correct
 
