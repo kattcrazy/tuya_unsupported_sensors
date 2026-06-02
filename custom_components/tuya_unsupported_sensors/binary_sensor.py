@@ -155,9 +155,13 @@ def _resolve_binary_unique_id(
     legacy_unique_id = f"{slugify(device_name)}_{slugify(friendly_name)}"
     stable_unique_id = f"{slugify(device_id)}_{slugify(property_code)}"
 
-    if entity_registry.async_get_entity_id("binary_sensor", DOMAIN, legacy_unique_id):
+    if entity_registry.async_get_entity_id(
+        "binary_sensor", DOMAIN, legacy_unique_id
+    ):
         return legacy_unique_id
-    if entity_registry.async_get_entity_id("binary_sensor", DOMAIN, stable_unique_id):
+    if entity_registry.async_get_entity_id(
+        "binary_sensor", DOMAIN, stable_unique_id
+    ):
         return stable_unique_id
     return stable_unique_id
 

@@ -5,6 +5,9 @@ from __future__ import annotations
 from time import monotonic
 from typing import Any
 
+from homeassistant import data_entry_flow
+from homeassistant.components.repairs import RepairsFlow
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers import issue_registry as ir
 
 from .const import (
@@ -141,3 +144,34 @@ def clear_runtime_issues(hass, entry_id: str) -> None:
     cache: dict[str, dict[str, Any]] | None = hass.data.get(DOMAIN, {}).get(PROBE_CACHE_KEY)
     if cache and entry_id in cache:
         del cache[entry_id]
+
+
+async def async_create_fix_flow(
+    hass: HomeAssistant,
+    issue_id: str,
+    data: dict[str, Any] | None,
+) -> RepairsFlow:
+    """Create a no-op repairs flow for compatibility with HA repairs platform."""
+    return TuyaUnsupportedSensorsRepairsFlow(hass, issue_id, data or {})
+
+
+class TuyaUnsupportedSensorsRepairsFlow(RepairsFlow):
+    """Minimal repairs flow because issues are informational only."""
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        issue_id: str,
+        data: dict[str, Any],
+    ) -> None:
+        """Initialize repair flow context."""
+        self._hass = hass
+        self._issue_id = issue_id
+        self._data = data
+
+    async def async_step_init(
+        self,
+        user_input: dict[str, Any] | None = None,
+    ) -> data_entry_flow.FlowResult:
+        """Abort immediately as there is no interactive fix flow."""
+        return self.async_abort(reason="not_supported")
