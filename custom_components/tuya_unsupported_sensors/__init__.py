@@ -18,7 +18,6 @@ from .const import (
     CONF_REGION,
     CONF_UPDATE_INTERVAL,
     DEFAULT_UPDATE_INTERVAL,
-    MAX_UPDATE_INTERVAL,
     MIN_UPDATE_INTERVAL,
     DOMAIN,
 )
@@ -103,14 +102,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         new_options[CONF_UPDATE_INTERVAL] = update_interval
         hass.config_entries.async_update_entry(entry, data=new_data, options=new_options)
     
-    # Validate update_interval is within allowed range
-    if update_interval < MIN_UPDATE_INTERVAL or update_interval > MAX_UPDATE_INTERVAL:
+    if update_interval < MIN_UPDATE_INTERVAL:
         _LOGGER.warning(
-            "update_interval %d is outside valid range (%d-%d seconds), using default %d seconds",
+            "update_interval %d is below minimum (%d seconds), using default %d seconds",
             update_interval,
             MIN_UPDATE_INTERVAL,
-            MAX_UPDATE_INTERVAL,
-            DEFAULT_UPDATE_INTERVAL
+            DEFAULT_UPDATE_INTERVAL,
         )
         update_interval = DEFAULT_UPDATE_INTERVAL
     

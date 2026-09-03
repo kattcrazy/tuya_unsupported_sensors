@@ -19,7 +19,6 @@ from .const import (
     CONF_UPDATE_INTERVAL,
     DEFAULT_UPDATE_INTERVAL,
     MIN_UPDATE_INTERVAL,
-    MAX_UPDATE_INTERVAL,
     DOMAIN,
     REGIONS,
     TRIAL_MAX_DEVICES,
@@ -452,8 +451,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if update_interval is not None:
                 try:
                     update_interval = int(update_interval)
-                    if update_interval < MIN_UPDATE_INTERVAL or update_interval > MAX_UPDATE_INTERVAL:
-                        errors[CONF_UPDATE_INTERVAL] = f"Must be between {MIN_UPDATE_INTERVAL} and {MAX_UPDATE_INTERVAL} seconds"
+                    if update_interval < MIN_UPDATE_INTERVAL:
+                        errors[CONF_UPDATE_INTERVAL] = f"Must be at least {MIN_UPDATE_INTERVAL} second(s)"
                     else:
                         num_devices = len(self._devices) if self._devices else 0
                         exceeds_limits, warning_msg = _check_trial_limits(num_devices, update_interval)
@@ -776,8 +775,8 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             if update_interval is not None:
                 try:
                     update_interval = int(update_interval)
-                    if update_interval < MIN_UPDATE_INTERVAL or update_interval > MAX_UPDATE_INTERVAL:
-                        errors[CONF_UPDATE_INTERVAL] = f"Must be between {MIN_UPDATE_INTERVAL} and {MAX_UPDATE_INTERVAL} seconds"
+                    if update_interval < MIN_UPDATE_INTERVAL:
+                        errors[CONF_UPDATE_INTERVAL] = f"Must be at least {MIN_UPDATE_INTERVAL} second(s)"
                     else:
                         num_devices = len(_get_entry_value(self.config_entry, CONF_DEVICES, []))
                         exceeds_limits, warning_msg = _check_trial_limits(num_devices, update_interval)
